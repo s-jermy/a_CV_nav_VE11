@@ -12,7 +12,7 @@
 #ifndef FileSaveIB_1
 #define FileSaveIB_1 1
 
-#ifndef VXWORKS
+#ifdef WIN32
 #include "MrServers/MrMeasSrv/SeqIF/Sequence/Sequence.h"				
 #include <vector>														
 #include "MrServers/MrProtSrv/MrProtocol/UILink/StdProtRes/StdProtRes.h"
@@ -24,32 +24,32 @@ class FileSaveIB{
 public:
 
     //  Default constructor
-    	FileSaveIB();
+    FileSaveIB();
     
     //  Destructor
-    	virtual ~FileSaveIB();
+    virtual ~FileSaveIB();
     
     
-    char myfilename[128];
-	char datetime[20]; 
-    double LogNav[10000];
-    double LogCSOut[10000];
-    double LogFFT[10000];
-    double LogExtra[10000];
+    char	m_cMyFilename[128];
+	char	m_cDateTime[20]; 
+    double	m_dLogNav[10000];
+    double	m_dLogCSOut[10000];
+    double	m_dLogFFT[10000];
+    double	m_dLogExtra[10000];
 	
-    //double Log[10000];
-	int NavCountersv;
-	int CSCountersv;
-	int FFTCountersv;
-	int ExtraCountersv;
-	int	OutCounter;
-	long * navlogpntr;
-		
-void FSIB_open();
+    //double m_dLog[10000];
+	int		m_iNavCountersv;
+	int		m_iCSCountersv;
+	int		m_iFFTCountersv;
+	int		m_iExtraCountersv;
+	int		m_iOutCounter;
+	long	*m_pNavLog;
 
-void FSIB_close();
+	void	FileSaveOpen();
 
-void FSIB_acces(double results, int nameOfFileib);
+	void	FileSaveClose();
+
+	void	FileSaveAccess(double dResults, int iNameOfFile);
 
 };
  

@@ -1,9 +1,3 @@
-#include "FileSaveIB.h"
-
-
-
-
-
 //  -----------------------------------------------------------------------------
 //   Project: Myne
 //   File: n4\pkg\MrServers\MrImaging\seq\a_cv_nav_ib\FileSave_ib.cpp
@@ -15,10 +9,11 @@
 //
 //  -----------------------------------------------------------------------------
 
-
 //------------------------------------------------------------------------------
 // include files                   
 //------------------------------------------------------------------------------
+
+#include "FileSave_sj.h"
 
 //retro
 #define private public
@@ -33,33 +28,37 @@
 //ADS	My include
 //#include "MrServers/MrImaging/seq/nav_newspiral_DB2/ADS_header.h"
 
-#include  "MrServers/MrImaging/seq/SeqDebug.h"                  // for debugging macros
-#include  "MrServers/MrMeasSrv/SeqIF/Sequence/sequmsg.h"              // for SEQU_ ... errors codes
-#include  "MrServers/MrMeasSrv/SeqIF/Sequence/Sequence.h"
-#include  "MrServers/MrImaging/libSBB/SBBTSat.h"	// for T-Sat object
+#include  "MrServers/MrImaging/seq/SeqDebug.h"				// for debugging macros
+#include  "MrServers/MrImaging/seq/SystemProperties.h"		// for siemens system properties
+#include  "MrServers/MrImaging/libSBB/SBBTSat.h"			// for T-Sat object
+#include  "MrServers/MrImaging/libSeqUtil/libSeqUtil.h"		// for fSU functions.
+#include  "MrServers/MrImaging/ut/libSeqUT.h"				// for mSEQTest
 //#include  "MrServers/MrImaging/seq/nav_newspiral_DB2/LocalSeqLoop.h"	// for SeqLoop class
-#include  "MrServers/MrMeasSrv/SeqFW/libSSL/libSSL.h"        // for fSSL functions.
-#include  "MrServers/MrImaging/libSeqUtil/libSeqUtil.h" // for fSU functions.
-#include  "MrServers/MrPerAns/PerProxies/GCProxy.h"     // for GC proxy :-)
-#include  "MrServers/MrPerAns/PerProxies/GPAProxy.h"    // for GPA proxy 
-#include  "MrServers/MrPerAns/PerProxies/MSUProxy.h"    // for MSU Proxy, contains nominal Bo
-#include  "MrServers/MrMeasSrv/SeqIF/csequence.h"            // Defines for RF spoiling
-#include  "MrServers/MrImaging/ut/libSeqUT.h"                   // for mSEQTest
 //JK: #include  "MrServers/MrImaging/seq/Kernels/SBBGREFCKernel.h"    // includes the GRE Flow compensated Kernel
 //#include  "MrServers/MrImaging/seq/nav_newspiral_DB2/SBBGREFCKernel.h"    //JK
-#include  "MrServers/MrImaging/seq/SystemProperties.h "                  // for siemens system properties
-#include  "MrServers/MrMeasSrv/MeasUtils/MeasMath.h"  // minimum/maximum
 
-#ifndef VXWORKS
-#include  "MrServers/MrProtSrv/MrProtocol/libUILink/StdRoutines.h"
-#include "MrServers/MrImaging/libUICtrl/UICtrl.h"
+#include  "MrServers/MrMeasSrv/SeqIF/Sequence/sequmsg.h"	// for SEQU_ ... errors codes
+#include  "MrServers/MrMeasSrv/SeqIF/Sequence/Sequence.h"
+#include  "MrServers/MrMeasSrv/SeqIF/csequence.h"			// Defines for RF spoiling
+#include  "MrServers/MrMeasSrv/SeqFW/libSSL/libSSL.h"		// for fSSL functions.
+#include  "MrServers/MrMeasSrv/MeasUtils/MeasMath.h"		// minimum/maximum
+
+//#include  "MrServers/MrPerAns/PerProxies/GCProxy.h"		// for GC proxy :-)						sj - commented out
+//#include  "MrServers/MrPerAns/PerProxies/GPAProxy.h"		// for GPA proxy						sj - commented out
+//#include  "MrServers/MrPerAns/PerProxies/MSUProxy.h"		// for MSU Proxy, contains nominal Bo	sj - commented out
+
+#ifdef WIN32
+//#include "MrServers/MrImaging/libUICtrl/UICtrl.h"			//sj - commented out
+
+#include "MrServers/MrProtSrv/MrProtocol/libUILink/StdRoutines.h"
 #include "MrServers/MrProtSrv/MrProtocol/libUILink/UILinkLimited.h"
 #include "MrServers/MrProtSrv/MrProtocol/libUILink/UILinkSelection.h"	//JK
 #include "MrServers/MrProtSrv/MrProtocol/libUILink/UILinkArray.h"		//JK
-#include "MrServers/MrMeasSrv/SeqIF/Sequence/Sequence.h"				//JK
-#include <vector>														//JK: Sequence Special Card
 #include "MrServers/MrProtSrv/MrProtocol/UILink/StdProtRes/StdProtRes.h"
 #include "MrServers/MrProtSrv/MrProtocol/UILink/MrStdNameTags.h"
+
+#include "MrServers/MrMeasSrv/SeqIF/Sequence/Sequence.h"				//JK
+#include <vector>														//JK: Sequence Special Card
 #endif
 
 // * ------------------------------------------------------------------------------ *
@@ -69,97 +68,96 @@
     #include   "MrServers/MrImaging/seq/common/iPAT/iPAT.h"
 #endif
 
-
-
-
-
 FILE *MyFPtr;
 
-
-   FileSaveIB::FileSaveIB(){}
-   FileSaveIB::~FileSaveIB(){}
-
-
-void FileSaveIB::FSIB_open()
+FileSaveIB::FileSaveIB()
 {
+}
 
+FileSaveIB::~FileSaveIB()
+{
+}
+
+void FileSaveIB::FileSaveOpen()
+{
 	//cout<<"28-09#############################-------in--------##########################"<<endl;
 	
-	NavCountersv 	= 0;
-	CSCountersv		= 0;
-	FFTCountersv 	= 0;
-	ExtraCountersv 	= 0;
+	m_iNavCountersv 	= 0;
+	m_iCSCountersv		= 0;
+	m_iFFTCountersv 	= 0;
+	m_iExtraCountersv	= 0;
 	
 		
-	for (int OutCounter = 0; OutCounter<10000;OutCounter++) 
-		{
-		LogNav[OutCounter] 		= 0;	//zero all
-		LogCSOut[OutCounter] 	= 0;
-		LogFFT[OutCounter] 		= 0;
-		LogExtra[OutCounter]	= 1;
-		
-		}
+	for (m_iOutCounter=0; m_iOutCounter<10000; m_iOutCounter++) 
+	{
+		m_dLogNav[m_iOutCounter]	= 0;	//zero all
+		m_dLogCSOut[m_iOutCounter]	= 0;
+		m_dLogFFT[m_iOutCounter]	= 0;
+		m_dLogExtra[m_iOutCounter]	= 1;
+	}
 	
-	time_t				ctime; 
-	tm					*stime;  
-	//	get current date and time in a string (format: YYYYMMDD_HHhMMmSSs)
+	time_t	ctime; 
+	tm		*stime;  
+	// get current date and time in a string (format: YYYYMMDD_HHhMMmSSs)
 	time(&ctime);
-	stime=localtime(&ctime);
-	strftime(datetime,20,"%Y%m%d_%Hh%Mm%Ss",stime);
-	sprintf(myfilename,"save_data_");
-	strcat(myfilename,datetime);
-	strcat(myfilename,".txt");
-	if((MyFPtr=fopen(myfilename,"w"))==NULL)
-		{cout<<"error opening oufile"<<endl;};
+	stime = localtime(&ctime);
+	strftime(m_cDateTime,20, "%Y%m%d_%Hh%Mm%Ss", stime);
+	sprintf(m_cMyFilename, "save_data_");
+	strcat(m_cMyFilename, m_cDateTime);
+	strcat(m_cMyFilename, ".txt");
+	if( (MyFPtr=fopen(m_cMyFilename,"w"))==NULL )
+	{
+		std::cout<<"error opening outfile"<<std::endl;
+	}
 }	
 
 //ib-START - record the data to the file and close it		
-void FileSaveIB::FSIB_close()
+void FileSaveIB::FileSaveClose()
 {
 	//cout<<"close---------------------"<<endl;
-	for (OutCounter = 0;OutCounter<NavCountersv;OutCounter++)
+	for (m_iOutCounter=0; m_iOutCounter<m_iNavCountersv; m_iOutCounter++)
 		{
-			fprintf(MyFPtr,"%6.2f\n",LogNav[OutCounter]);
+			fprintf(MyFPtr,"%6.2f\n", m_dLogNav[m_iOutCounter]);
 		}
 		fprintf(MyFPtr,"-----------------\n\n");
-	for (OutCounter = 0;OutCounter<CSCountersv;OutCounter++)
+	for (m_iOutCounter=0; m_iOutCounter<m_iCSCountersv; m_iOutCounter++)
 		{
-			fprintf(MyFPtr,"%6.2f\n",LogCSOut[OutCounter]);
+			fprintf(MyFPtr,"%6.2f\n", m_dLogCSOut[m_iOutCounter]);
 		}
 		fprintf(MyFPtr,"-----------------\n\n");
-	for (OutCounter = 0;OutCounter<FFTCountersv;OutCounter++)
+	for (m_iOutCounter=0; m_iOutCounter<m_iFFTCountersv; m_iOutCounter++)
 		{
-			fprintf(MyFPtr,"%6.2f\n",LogFFT[OutCounter]);
+			fprintf(MyFPtr,"%6.2f\n", m_dLogFFT[m_iOutCounter]);
 		}
 		fprintf(MyFPtr,"-----------------\n\n");
-	for (OutCounter = 0;OutCounter<ExtraCountersv;OutCounter++)
+	for (m_iOutCounter=0; m_iOutCounter<m_iExtraCountersv; m_iOutCounter++)
 		{
-			fprintf(MyFPtr,"%6.2f\n",LogExtra[OutCounter]);
+			fprintf(MyFPtr,"%6.2f\n", m_dLogExtra[m_iOutCounter]);
 		}
 	fclose(MyFPtr);
 }
 
 //record the data to the file and close it
-void FileSaveIB::FSIB_acces(double results, int nameOfFileib)
+void FileSaveIB::FileSaveAccess(double dResults, int iNameOfFile)
 {
-	if (nameOfFileib == 1)
+	if (iNameOfFile == 1)
 	{
-	LogNav[NavCountersv] = results;
-	NavCountersv++;
+		m_dLogNav[m_iNavCountersv] = dResults;
+		m_iNavCountersv++;
 	}
-	else if (nameOfFileib == 2)
+	else if (iNameOfFile == 2)
 	{
-	LogCSOut[CSCountersv] = results;
-	CSCountersv++;
+		m_dLogCSOut[m_iCSCountersv] = dResults;
+		m_iCSCountersv++;
 	}
-	else if (nameOfFileib == 3)
+	else if (iNameOfFile == 3)
 	{
-	LogFFT[FFTCountersv] = results;
-	FFTCountersv++;
+		m_dLogFFT[m_iFFTCountersv] = dResults;
+		m_iFFTCountersv++;
 	}
-	else if (nameOfFileib == 4)
+	else if (iNameOfFile == 4)
 	{
-	LogExtra[ExtraCountersv] = results;
-	ExtraCountersv++;
+		m_dLogExtra[m_iExtraCountersv] = dResults;
+		m_iExtraCountersv++;
 	}
 }
