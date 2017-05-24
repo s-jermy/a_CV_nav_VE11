@@ -37,14 +37,14 @@
 // MrProt
 
 #include "MrServers/MrImaging/seq/Kernels/SBBTRUFICVKernel.h"
-
 #include "MrServers/MrImaging/seq/Kernels/SBBReadOut.h"
 
 #include "MrServers/MrImaging/seq/a_CV/mat3D.h"
 
-
-
 #define DEBUG_ORIGIN                        DEBUG_SBB
+
+typedef Slice OSlice;		//ib
+extern double NavForSlice;	//ib
 
 #ifndef SEQ_NAMESPACE
     #error SEQ_NAMESPACE not defined
@@ -1261,6 +1261,7 @@ bool SBBTRUFICVKernel::run (MrProt &rMrProt, SeqLim &rSeqLim, SeqExpo &rSeqExpo,
             return ( false );
         }
         if (! SBBTRUFIKernel::run (rMrProt, rSeqLim, rSeqExpo, pSLC) )
+		/*if (! runTrans (rMrProt, rSeqLim, rSeqExpo, pSLC) )		//sj*/
         {
             if ((getNLSStatus() & NLS_SEV) != NLS_SEV)
                 setNLSStatus(SEQU_ERROR, ptModule, " kernel call fails but does not set NLS ERROR");
@@ -1277,9 +1278,113 @@ bool SBBTRUFICVKernel::run (MrProt &rMrProt, SeqLim &rSeqLim, SeqExpo &rSeqExpo,
 }
 
 
+/*// -----------------------------------------------------------------------------
+//
+//   Name        :  SBBTRUFICVKernel::runTrans
+//
+//   Description :
+///  \brief        run method for radial imaging
+///
+///
+///
+// -----------------------------------------------------------------------------
+//ib-start
+bool SBBTRUFICVKernel::runTrans (MrProt &rMrProt, SeqLim &rSeqLim, SeqExpo &rSeqExpo, sSLICE_POS *pSLC)
+{
+	static const char *ptModule = "SBBTRUFICVKernel::runTrans";
+
+//     if(m_ekSpaceTrajectory != )
+//     {
+//         setNLSStatus(SEQU_ERROR, ptModule, " Propeller Mode not initialized \n");
+//         return ( false );
+//     }
+
+	// set specified line number is relative to centerline
+	//setlLineNumber ( getlKSpaceCenterLine() + (long) dPELine );
+
+
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+    // the following section is copied from (libRT:)sREADOUT::process(...)
+    //-------------------------------------------------------------------------
+    //-------------------------------------------------------------------------
+
+    // comment on syntax: the GREKernel defines an enum GradientAxis::Slice. Since we are within a
+    // derived kernel, we have to access the class 'Slice' via it's namespace.
+    // Since in the header file the class slices is declared without a namespace
+    // it belongs to the "unnamed" namespace and is addressed by ::Slice
+
+    // ::Slice slice = rMrProt.sliceSeries().chronological(lSlice);
+
+    long sSliceIndexInProt = pSLC->getSliceIndex();
+    OSlice slice = rMrProt.sliceSeries()[sSliceIndexInProt];
+	//-------------------------------------------------------------------------
+    // Fill the slice data structure
+    //-------------------------------------------------------------------------
+    sSliceData  SliceData;
+    SliceData.sSlicePosVec.flSag  = slice.position().sag();
+    SliceData.sSlicePosVec.flCor  = slice.position().cor();
+    SliceData.sSlicePosVec.flTra  = slice.position().tra();
+
+    //-------------------------------------------------------------------------
+    // Calculate and store Gp, Gr and Gs (in patient coordinate system
+    //-------------------------------------------------------------------------
+//     double adRotMat[3][3] =
+//     { { 0.0,                   0.0,                   0.0},                    // PE
+//       { 0.0,                   0.0,                   0.0},                    // RO
+//       { slice.normal().sag(),  slice.normal().cor(),  slice.normal().tra()}    // SL
+//     };
+// 
+//     fGSLCalcPRS(adRotMat[0], adRotMat[1], adRotMat[2], slice.rotationAngle());
+
+    slice.position(slice.position().sag(),slice.position().cor(), slice.position().tra() + NavForSlice);//ib
+    
+     //cout<<"sag = "<<slice.position().sag()<<endl;
+     //cout<<"cor = "<<slice.position().cor()<<endl;
+     //cout<<"tra = "<<slice.position().tra()<<endl;
+    
+    //-------------------------------------------------------------------------
+    // Set the rotational matrix and SliceData object
+    //-------------------------------------------------------------------------
+    MdhProxy& rMDH = ADC(0).getMDH();
+
+//     rMDH.setRotMatrix(adRotMat, SliceData);
+    rMDH.setSliceData(SliceData);
+
+    //-------------------------------------------------------------------------
+    // If the rotation angle is not 0, we say it is swapped
+    //-------------------------------------------------------------------------
+   // rMDH.setPRSwapped( (fabs(slice.rotationAngle()) > 0.01) );
+
+
+    //-------------------------------------------------------------------------
+    // stop (libRT:)sREADOUT::process(...) from overwriting the slice info
+    //-------------------------------------------------------------------------
+	ADC(0).setSliceDataValid(true);
 
 
 
+	//  Reprepare global sSLICE_POS object for view rotation
+	//////////////////////////////////////////////////////////////
+	static sSLICE_POS asTransSLC;
+
+	// get inplane rotation angle
+	//double oldAngle = slice.rotationAngle();
+	//slice.rotationAngle(oldAngle+dViewAngle);
+	//prepare rotated slice object
+	asTransSLC.prep(rMrProt, rSeqLim, slice, sSliceIndexInProt);
+	// Reset protocol rotation angle
+	//slice.rotationAngle(oldAngle);
+	//   Force update of rotation matrix
+	//updateRotationMatrix();
+	//cout<<"kyk hier  &asTransSLC ======== "<<&asTransSLC<<endl;								//ib-c
+    // * ---------------------------------------------------------------------- *
+    // * Execute Kernel                                                         *
+    // * ---------------------------------------------------------------------- *
+	return SBBTRUFIKernel::run(rMrProt, rSeqLim, rSeqExpo, &asTransSLC);
+}
+//ib-end
+*/
 
 // -----------------------------------------------------------------------------
 //
