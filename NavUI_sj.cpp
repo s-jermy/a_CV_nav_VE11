@@ -16,31 +16,27 @@
 //
 //    -----------------------------------------------------------------------------
 
-
-
-
 #ifdef WIN32
 
-#include "MrServers/MrImaging/seq/common/Nav/NavigatorShell.h"
-#include "MrServers/MrImaging/seq/common/Nav/NavUI.h"
+#include "MrServers/MrImaging/seq/a_CV_nav_VE11/NavigatorShell_sj.h"
+#include "MrServers/MrImaging/seq/a_CV_nav_VE11/NavUI_sj.h"
+
 #include "MrServers/MrMeasSrv/SeqIF/Sequence/SeqIF.h"
-#include "ProtBasic/Interfaces/MrNavigator.h"
+
 //#include "MrServers/MrProtSrv/MrProt/MrProtArray.h"
 //#include "MrServers/MrProtSrv/MrProt/MrProtTypedefs.h"
-
 #include "MrServers/MrProtSrv/MrProtocol/UILink/MrStdNameTags.h"
 #include "MrServers/MrProtSrv/MrProtocol/UILink/StdProtRes/StdProtRes.h"
 #include "MrServers/MrProtSrv/MrProtocol/libUILink/UILinkString.h"
 #include "MrServers/MrProtSrv/MrProtocol/libUILink/StdRoutines.h"
 
+#include "ProtBasic/Interfaces/MrNavigator.h"
+
 #ifndef SEQ_NAMESPACE
     #error SEQ_NAMESPACE not defined
 #endif
 
-
 using namespace SEQ_NAMESPACE;
-
-
 
 #ifndef SEQUENCE_CLASS
     MrUILinkArray::PFctErase          s_pOrigNavEraseHandler = NULL;
@@ -809,6 +805,16 @@ static unsigned _SSP_LONG_GetLabelId(LINK_LONG_TYPE* const, char* arg_list[], lo
     {
     case Label_Long_NavMatrix               : arg_list[0] = "Navigator Matrix";     break;
     case Label_Long_NavFov                  : arg_list[0] = "Navigator FOV";        break;
+
+	case Label_Long_NoOfNavs				: arg_list[0] = "Number of Navigators"; 		break; //JK2008
+    case Label_Long_TimeStartAcq			: arg_list[0] = "Time to Start Acquisition";	break; //JK2008
+    case Label_Long_TimeEndAcq				: arg_list[0] = "Time to End Acquisition";		break; //JK2008
+    case Label_Long_TimeEndCardiac			: arg_list[0] = "Time Cardiac Cycle Ends";		break; //JK2008
+    case Label_Long_NavTR_ms				: arg_list[0] = "Navigators TR(ms)"; 			break; //ib
+    case Label_Long_PoleSensitivity			: arg_list[0] = "Pole Sensitivity"; 			break; //ib
+    case Label_Long_ScoutLength				: arg_list[0] = "Scout Length"; 				break; //ib
+    case Label_Long_SliceSelection			: arg_list[0] = "Slice Selection"; 				break; //ib
+
     case Label_Long_NavPrepTR_ms            : return MIR_STD_SCOUT_TR;
     case Label_Long_NavPrepDuration_sec     : return MIR_STD_SCOUT_DURATION;
     case Label_Long_NavSleepDuration_ms     : return MRI_STD_FEEDBACK_TIME;
@@ -827,6 +833,16 @@ static unsigned _SSP_LONG_GetUnitId(LINK_LONG_TYPE* const, char* arg_list[], lon
     {
     case Label_Long_NavMatrix               : return MRI_STD_EMPTY;
     case Label_Long_NavFov                  : return MRI_STD_UNIT_MM;
+
+	case Label_Long_NoOfNavs				: return MRI_STD_EMPTY;		//JK2008
+    case Label_Long_TimeStartAcq			: return MRI_STD_EMPTY;		//JK2008
+    case Label_Long_TimeEndAcq				: return MRI_STD_EMPTY;		//JK2008
+    case Label_Long_TimeEndCardiac			: return MRI_STD_EMPTY;		//JK2008
+    case Label_Long_NavTR_ms				: return MRI_STD_EMPTY;		//ib
+    case Label_Long_PoleSensitivity			: return MRI_STD_EMPTY;		//ib
+    case Label_Long_ScoutLength				: return MRI_STD_EMPTY;		//ib
+    case Label_Long_SliceSelection			: return MRI_STD_EMPTY;		//ib
+
     case Label_Long_NavPrepTR_ms            : return MRI_STD_UNIT_MS;
     case Label_Long_NavPrepDuration_sec     : return MRI_STD_UNIT_SEC;
     case Label_Long_NavSleepDuration_ms     : return MRI_STD_UNIT_MS;
@@ -853,6 +869,16 @@ static bool _SSP_LONG_IsAvailable(LINK_LONG_TYPE* const pThis, long lIndex)
         default                                 : bRet = true; break;
         case Label_Long_NavMatrix               : bRet = true; break;
         case Label_Long_NavFov                  : bRet = true; break;
+
+		case Label_Long_NoOfNavs			    : bRet = true; break;	//JK2008
+        case Label_Long_TimeStartAcq			: bRet = true; break;	//ib
+        case Label_Long_TimeEndAcq				: bRet = true; break;	//ib
+        case Label_Long_TimeEndCardiac			: bRet = true; break;	//ib
+        case Label_Long_NavTR_ms			    : bRet = true; break;	//ib
+        case Label_Long_PoleSensitivity			: bRet = true; break;	//ib
+        case Label_Long_ScoutLength				: bRet = true; break;	//ib
+        case Label_Long_SliceSelection		    : bRet = true; break;	//ib
+
         case Label_Long_NavSleepDuration_ms     : bRet = true; break;
         case Label_Long_NavPrepTR_ms            : bRet = true; break;
 
@@ -893,6 +919,16 @@ static bool _SSP_LONG_GetLimits(LINK_LONG_TYPE* const pThis, std::vector<MrLimit
         return rLimitVector[0].setBase2(lMin,lMax);
         break;
     case Label_Long_NavFov                  : lMin= 128 ; lMax=512     ; lInc=1   ; break;
+
+	case Label_Long_NoOfNavs                : lMin= 1	; lMax=10	   ; lInc=1   ; break; //JK2008
+    case Label_Long_TimeStartAcq			: lMin= 200	; lMax=1500	   ; lInc=1   ; break; //ib
+    case Label_Long_TimeEndAcq         		: lMin= 250	; lMax=2000	   ; lInc=1   ; break; //ib
+    case Label_Long_TimeEndCardiac			: lMin= 300	; lMax=2000	   ; lInc=1   ; break; //ib
+    case Label_Long_NavTR_ms              	: lMin= 40	; lMax=400	   ; lInc=10  ; break; //ib
+    case Label_Long_PoleSensitivity       	: lMin= 1	; lMax=3	   ; lInc=1   ; break; //ib
+    case Label_Long_ScoutLength           	: lMin= 256	; lMax=1024	   ; lInc=256 ; break; //ib
+    case Label_Long_SliceSelection        	: lMin= 1	; lMax=2	   ; lInc=1	  ; break; //ib???
+
     case Label_Long_NavPrepTR_ms            : lMin= 50  ; lMax=10000   ; lInc=1   ; break;
     case Label_Long_NavPrepDuration_sec     : lMin= 2   ; lMax=6000    ; lInc=1   ; break;
     case Label_Long_NavSleepDuration_ms     : lMin= 0   ; lMax=9999    ; lInc=1   ; break;
@@ -938,6 +974,42 @@ unsigned _SSP_LONG_GetToolTipId(LINK_LONG_TYPE* const pThis, char* arg_list[], l
     case Label_Long_NavFov:
         nRet = MRI_STD_NAVUI_TOOLTIP_FOV;
         break;
+
+	//JK2008 - start
+	case Label_Long_NoOfNavs:
+        //sprintf(tLine,  "The total number of pre navs played out (including FB one)."); strcat(tToolTip,tLine);
+        break;
+	//JK2008 - end
+
+	//ib - start
+	case Label_Long_TimeStartAcq:
+        //sprintf(tLine,  "Enter the time that the acquisition should start"); strcat(tToolTip,tLine);
+        break;
+
+	case Label_Long_TimeEndAcq:
+        //sprintf(tLine,  "Enter the time that the acquisition should end"); strcat(tToolTip,tLine);
+        break;
+
+	case Label_Long_TimeEndCardiac:
+        //sprintf(tLine,  "enter the time that the acquisition should start"); strcat(tToolTip,tLine);
+        break;
+
+	case Label_Long_NavTR_ms:
+        //sprintf(tLine,  "The total TR time for each navigator, recovery time before next navigator"); strcat(tToolTip,tLine); //ib
+        break;
+
+	case Label_Long_PoleSensitivity:
+        //sprintf(tLine,  "Set the sensitivity of the poles"); strcat(tToolTip,tLine); //ib?
+        break;
+
+	case Label_Long_ScoutLength:
+        //sprintf(tLine,  "How many points to collect for model"); strcat(tToolTip,tLine); //ib
+        break;
+
+	case Label_Long_SliceSelection:
+        //sprintf(tLine,  "Use slice following or not"); strcat(tToolTip,tLine); //ib
+        break;
+	//ib - end
 
     case Label_Long_NavPrepTR_ms:
         nRet = MRI_STD_NAVUI_TOOLTIP_SCOUT_TR;
@@ -1949,6 +2021,14 @@ NavUI::NavUI()
   , m_Default_SelectionBox_NavPosition(Value_NavBefEchoTrain)
   , m_Default_Long_NavMatrix(256)
   , m_Default_Long_NavFov(256)
+  , m_Default_Long_NoOfNavs(4)				//JK2008
+  , m_Default_Long_TimeStartAcq(760)		//ib
+  , m_Default_Long_TimeEndAcq(900)			//ib
+  , m_Default_Long_TimeEndCardiac(1000)		//ib
+  , m_Default_Long_NavTR_ms(80)				//ib
+  , m_Default_Long_PoleSensitivity(2)		//ib
+  , m_Default_Long_ScoutLength(512)			//ib
+  , m_Default_Long_SliceSelection(1)		//ib
   , m_Default_Double_NavAcceptancePosition(128.0)
   , m_Default_Double_NavAcceptanceWidth(4.0)
   , m_Default_Double_NavSearchPosition(128.0)
@@ -2307,6 +2387,91 @@ NLS_STATUS NavUI::init (SeqLim &rSeqLim)
         }
     }
 
+	//JK2008
+	if (LINK_LONG_TYPE* pLong = _create< LINK_LONG_TYPE >(rSeqLim, MR_TAG_SEQ_WIP10, Label_Long_NoOfNavs))
+		{
+		pLong->registerGetLabelIdHandler(_SSP_LONG_GetLabelId);
+        pLong->registerGetUnitIdHandler(_SSP_LONG_GetUnitId);
+        pLong->registerIsAvailableHandler(_SSP_LONG_IsAvailable);
+        pLong->registerGetLimitsHandler(_SSP_LONG_GetLimits);
+        pLong->registerGetValueHandler(_SSP_LONG_GetValue);
+        pLong->registerSetValueHandler(_SSP_LONG_SetValue);
+        pLong->registerGetToolTipIdHandler(_SSP_LONG_GetToolTipId);
+		}
+	//JK2008
+	//ib-start
+	if (LINK_LONG_TYPE* pLong = _create< LINK_LONG_TYPE >(rSeqLim, MR_TAG_SEQ_WIP5, Label_Long_TimeStartAcq))
+		{
+		pLong->registerGetLabelIdHandler(_SSP_LONG_GetLabelId);
+        pLong->registerGetUnitIdHandler(_SSP_LONG_GetUnitId);
+        pLong->registerIsAvailableHandler(_SSP_LONG_IsAvailable);
+        pLong->registerGetLimitsHandler(_SSP_LONG_GetLimits);
+        pLong->registerGetValueHandler(_SSP_LONG_GetValue);
+        pLong->registerSetValueHandler(_SSP_LONG_SetValue);
+        pLong->registerGetToolTipIdHandler(_SSP_LONG_GetToolTipId);
+		}
+	if (LINK_LONG_TYPE* pLong = _create< LINK_LONG_TYPE >(rSeqLim, MR_TAG_SEQ_WIP12, Label_Long_TimeEndAcq))
+		{
+		pLong->registerGetLabelIdHandler(_SSP_LONG_GetLabelId);
+        pLong->registerGetUnitIdHandler(_SSP_LONG_GetUnitId);
+        pLong->registerIsAvailableHandler(_SSP_LONG_IsAvailable);
+        pLong->registerGetLimitsHandler(_SSP_LONG_GetLimits);
+        pLong->registerGetValueHandler(_SSP_LONG_GetValue);
+        pLong->registerSetValueHandler(_SSP_LONG_SetValue);
+        pLong->registerGetToolTipIdHandler(_SSP_LONG_GetToolTipId);
+		}
+	if (LINK_LONG_TYPE* pLong = _create< LINK_LONG_TYPE >(rSeqLim, MR_TAG_SEQ_WIP13, Label_Long_TimeEndCardiac))
+		{
+		pLong->registerGetLabelIdHandler(_SSP_LONG_GetLabelId);
+        pLong->registerGetUnitIdHandler(_SSP_LONG_GetUnitId);
+        pLong->registerIsAvailableHandler(_SSP_LONG_IsAvailable);
+        pLong->registerGetLimitsHandler(_SSP_LONG_GetLimits);
+        pLong->registerGetValueHandler(_SSP_LONG_GetValue);
+        pLong->registerSetValueHandler(_SSP_LONG_SetValue);
+        pLong->registerGetToolTipIdHandler(_SSP_LONG_GetToolTipId);
+		}
+	if (LINK_LONG_TYPE* pLong = _create< LINK_LONG_TYPE >(rSeqLim, MR_TAG_SEQ_WIP9, Label_Long_NavTR_ms))
+		{
+		pLong->registerGetLabelIdHandler(_SSP_LONG_GetLabelId);
+        pLong->registerGetUnitIdHandler(_SSP_LONG_GetUnitId);
+        pLong->registerIsAvailableHandler(_SSP_LONG_IsAvailable);
+        pLong->registerGetLimitsHandler(_SSP_LONG_GetLimits);
+        pLong->registerGetValueHandler(_SSP_LONG_GetValue);
+        pLong->registerSetValueHandler(_SSP_LONG_SetValue);
+        pLong->registerGetToolTipIdHandler(_SSP_LONG_GetToolTipId);
+		}
+	if (LINK_LONG_TYPE* pLong = _create< LINK_LONG_TYPE >(rSeqLim, MR_TAG_SEQ_WIP2, Label_Long_PoleSensitivity))
+		{
+		pLong->registerGetLabelIdHandler(_SSP_LONG_GetLabelId);
+        pLong->registerGetUnitIdHandler(_SSP_LONG_GetUnitId);
+        pLong->registerIsAvailableHandler(_SSP_LONG_IsAvailable);
+        pLong->registerGetLimitsHandler(_SSP_LONG_GetLimits);
+        pLong->registerGetValueHandler(_SSP_LONG_GetValue);
+        pLong->registerSetValueHandler(_SSP_LONG_SetValue);
+        pLong->registerGetToolTipIdHandler(_SSP_LONG_GetToolTipId);
+		}
+	if (LINK_LONG_TYPE* pLong = _create< LINK_LONG_TYPE >(rSeqLim, MR_TAG_SEQ_WIP3, Label_Long_ScoutLength))
+		{
+		pLong->registerGetLabelIdHandler(_SSP_LONG_GetLabelId);
+        pLong->registerGetUnitIdHandler(_SSP_LONG_GetUnitId);
+        pLong->registerIsAvailableHandler(_SSP_LONG_IsAvailable);
+        pLong->registerGetLimitsHandler(_SSP_LONG_GetLimits);
+        pLong->registerGetValueHandler(_SSP_LONG_GetValue);
+        pLong->registerSetValueHandler(_SSP_LONG_SetValue);
+        pLong->registerGetToolTipIdHandler(_SSP_LONG_GetToolTipId);
+		}
+	if (LINK_LONG_TYPE* pLong = _create< LINK_LONG_TYPE >(rSeqLim, MR_TAG_SEQ_WIP4, Label_Long_SliceSelection))
+		{
+		pLong->registerGetLabelIdHandler(_SSP_LONG_GetLabelId);
+        pLong->registerGetUnitIdHandler(_SSP_LONG_GetUnitId);
+        pLong->registerIsAvailableHandler(_SSP_LONG_IsAvailable);
+        pLong->registerGetLimitsHandler(_SSP_LONG_GetLimits);
+        pLong->registerGetValueHandler(_SSP_LONG_GetValue);
+        pLong->registerSetValueHandler(_SSP_LONG_SetValue);
+        pLong->registerGetToolTipIdHandler(_SSP_LONG_GetToolTipId);
+		}
+	//ib-end
+
     //  Look at registry to see if any debug flags are set.
     unsigned long ulSimulateICERawData = 0;
     ///////if( !RegIntOperator( "SOFTWARE\\Siemens\\Numaris4\\MRConfig\\Modality\\Sequence\\NAV", "ICE_SIMULATE_RAW", REG_INT_OPERATION_GET, ulSimulateICERawData, 0) )
@@ -2353,6 +2518,16 @@ NLS_STATUS NavUI::prep (MrProt &rMrProt, SeqLim &rSeqLim, SeqExpo &rSeqExpo)
         rMrProt.NavigatorParam().getalFree()[Label_SelectionBox_NavFBMode]             = m_Default_SelectionBox_NavFBMode;
         rMrProt.NavigatorParam().getalFree()[Label_Long_NavMatrix]                     = m_Default_Long_NavMatrix;
         rMrProt.NavigatorParam().getalFree()[Label_Long_NavFov]                        = m_Default_Long_NavFov;
+
+		rMrProt.NavigatorParam().getalFree()[Label_Long_NoOfNavs]					   = m_Default_Long_NoOfNavs;				//JK2008
+        rMrProt.NavigatorParam().getalFree()[Label_Long_TimeStartAcq]				   = m_Default_Long_TimeStartAcq;			//ib
+        rMrProt.NavigatorParam().getalFree()[Label_Long_TimeEndAcq]					   = m_Default_Long_TimeEndAcq ;			//ib
+        rMrProt.NavigatorParam().getalFree()[Label_Long_TimeEndCardiac]				   = m_Default_Long_TimeEndCardiac;			//ib
+		rMrProt.NavigatorParam().getalFree()[Label_Long_NavTR_ms]					   = m_Default_Long_NavTR_ms;				//ib        
+        rMrProt.NavigatorParam().getalFree()[Label_Long_PoleSensitivity]			   = m_Default_Long_PoleSensitivity;		//ib
+        rMrProt.NavigatorParam().getalFree()[Label_Long_ScoutLength]				   = m_Default_Long_ScoutLength;			//ib
+        rMrProt.NavigatorParam().getalFree()[Label_Long_SliceSelection]				   = m_Default_Long_SliceSelection;			//ib
+
         rMrProt.NavigatorParam().getalFree()[Label_SelectionBox_NavPosition]           = m_Default_SelectionBox_NavPosition;
         rMrProt.NavigatorParam().getadFree()[Label_Double_NavAcceptancePosition]       = m_Default_Double_NavAcceptancePosition;
         rMrProt.NavigatorParam().getadFree()[Label_Double_NavAcceptanceWidth]          = m_Default_Double_NavAcceptanceWidth;

@@ -29,6 +29,16 @@ enum eSeqSpecialParLabels  { Label_Dummy=1,                      // dummy
                              Label_SelectionBox_NavPosition,     // Pre, Pre&Post, or Post
                              Label_Long_NavMatrix,               // matrix size (base2)
                              Label_Long_NavFov,                  // FOV
+
+							 Label_Long_NoOfNavs,				//JK2008 
+							 Label_Long_TimeStartAcq,			//ib	
+							 Label_Long_TimeEndAcq,				//ib	
+							 Label_Long_TimeEndCardiac,			//ib	
+							 Label_Long_NavTR_ms,	 			//ib
+							 Label_Long_PoleSensitivity,		//ib
+							 Label_Long_ScoutLength,			//ib
+							 Label_Long_SliceSelection,			//ib
+
                              Label_CheckBox_PrepScan,            // Prep on/off
                              Label_Long_NavPrepTR_ms,      // TR for prep scans
                              Label_Long_NavPrepDuration_sec,     // Duration of prep scans
@@ -105,14 +115,16 @@ enum eSeqValueCheckBox     { Value_CheckBox_On=1,            // check box enable
 
 #if defined (_MSC_VER) 
 
-#include "MrServers/MrMeasSrv/MeasUtils/nlsmac.h"
 #include "ProtBasic/Interfaces/SeqBuff.h"                      // SeqLim and SeqExpo
+
 #include "MrServers/MrProtSrv/MrProtocol/libUILink/UILinkLimited.h"
 #include "MrServers/MrProtSrv/MrProtocol/libUILink/UILinkSelection.h"
 #include "MrServers/MrProtSrv/MrProtocol/libUILink/UILinkArray.h"
 #include "MrServers/MrProtSrv/MrProtocol/libUILink/UILinkNumeric.h"
 #include "MrServers/MrProtSrv/MrProtocol/UILink/StdProtRes/StdProtRes.h"
 #include "MrServers/MrProtSrv/MrProtocol/UILink/MrStdNameTags.h"
+
+#include "MrServers/MrMeasSrv/MeasUtils/nlsmac.h"
 #include "MrServers/MrMeasSrv/SeqIF/Sequence/Sequence.h"
 #include "MrServers/MrMeasSrv/SeqFW/libGSL/libGSL.h"
 
@@ -161,6 +173,16 @@ private:
     long   m_Default_SelectionBox_NavPosition;
     long   m_Default_Long_NavMatrix;
     long   m_Default_Long_NavFov;
+
+	long   m_Default_Long_NoOfNavs;				//JK2008
+    long   m_Default_Long_TimeStartAcq;			//ib	
+    long   m_Default_Long_TimeEndAcq;			//ib	
+    long   m_Default_Long_TimeEndCardiac;		//ib	
+	long   m_Default_Long_NavTR_ms;				//ib
+	long   m_Default_Long_PoleSensitivity;		//ib
+	long   m_Default_Long_ScoutLength;			//ib
+	long   m_Default_Long_SliceSelection;		//ib 
+
     double m_Default_Double_NavAcceptancePosition;
     double m_Default_Double_NavAcceptanceWidth;
     double m_Default_Double_NavSearchPosition;
