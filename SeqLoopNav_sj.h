@@ -27,6 +27,9 @@
 //  Definition of local SeqLoop version
 //  -----------------------------------------------------------------
 
+#include "MrServers/MrImaging/Seq/a_CV_nav_VE11/FileSave_sj.h"				//ib-c
+#include "MrServers/MrImaging/Seq/a_CV_nav_VE11/ControlSystem_sj.h"			//ib
+
 #include "MrServers/MrMeasSrv/SeqIF/libRT/sREADOUT.h"
 
 #if defined __A_TRUFI_CV_NAV
