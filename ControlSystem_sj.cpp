@@ -15,15 +15,14 @@
 // data gelyk vir acquisition planning kan gebruik.
 // dan hoef ek nie gedeurende aqcuisition die control te access nie.
 //	------------------------------------------------------------------------------
-
-
+// Porting Ian's control system to VE11
+//	------------------------------------------------------------------------------
 
 //ControlSystemIB2::
 
-
 // Header files ------------------
 
-#include "ControlSystemIB2.h"
+#include "ControlSystem_sj.h"
 #define PI 3.14159 
 
 //#include "mmatrix.h"
@@ -39,24 +38,36 @@
  
 	ControlSystemIB2::ControlSystemIB2(){}
 	ControlSystemIB2::~ControlSystemIB2(){}
-      
-// Function: PLayOutCSib =========================================
+
+	extern double NavForSlice;
+	double NavForSlice;
+	extern int	ResetFlag;
+	int	ResetFlag;
+
+// Function: InitScoutVal_ib ==============================
 //
-//	just for debug..runs control system - modify for real use
+//	sets xfft to zero
+//	sets counter to zero
 //	arguments:	void
 //	returns:	void
-//	--------------------------------------------------------------
-extern double NavForSlice;
-double NavForSlice;
-extern int	resetflag;	
-int	resetflag;	
-void ControlSystemIB2::PlayOutCSib()
+//	-----------------------------------------------------
+
+void ControlSystemIB2::InitScoutVal_ib()
 {
-	//Outputsib();
-	//Updateib();
+	for(m_iCounterSVSet=0; m_iCounterSVSet<=1024; m_iCounterSVSet++)
+	{
+		/*scoutValue*/m_dXfft[m_iCounterSVSet] = 0;
+	}
+	m_iCounterSV 	= 0;
+	m_iXCounter1 	= 0;
+	m_iXCounter2 	= 0;
+	m_iCounterOut	= 0;
+	m_iCounterC		= -1;
+
+	saveib.FileSaveOpen();	
 }
 
-// Function: InitializeConditionsib ==============================
+// Function: InitializeConditions_ib ==============================
 //
 //	set initial conditions for control system, and
 //	get navigator info
@@ -66,59 +77,234 @@ void ControlSystemIB2::PlayOutCSib()
 //	returns:	void
 //	--------------------------------------------------------------
    
-void ControlSystemIB2::InitializeConditionsib(long numOfNavs1, long navTr1, long imTr1)
+void ControlSystemIB2::InitializeConditions_ib(long lNumOfNavs, long lNavTr, long lImTr)
 {   
- 
-  	//numOfNavs		= double(numOfNavs1);
-  	navTr 			= double(navTr1);							//(ms)
-  	imTr			= double(imTr1)/1000;						//(us)->ms
-  	extraTime		= navTr - modulusib(imTr,navTr);			// ms
+  	m_dNumOfNavs	= double(lNumOfNavs);
+  	m_dNavTr 		= double(lNavTr);							//(ms)
+  	m_dImTr			= double(lImTr)/1000;						//(us)->ms
+  	m_dExtraTime	= m_dNavTr - Modulus_ib(m_dImTr,m_dNavTr);	// ms
 	
-  	
-  	
-	x[0][0]			= 0;	      			         			         			   
-	x[1][0]			= 0;	   
-	num 			= 0;   
-	CalculateAveib();	
-	CalculateFFTib();    			//2^m	 2^10
-	
+	m_dX[0][0]		= 0;
+	m_dX[1][0]		= 0;
+	//m_iNum			= 0;
 
-	cout<<"ave================"<<ave<<endl;
-	CalculateSystemValuesib();	
-	cout <<"initializeconditionsib-----navTr = "<<navTr<<endl;
-	cout <<"initializeconditionsib-----imTr = "<<imTr<<endl;  
-	//cout <<"initializeconditionsib-----extraTime = "<<extraTime*1000<<" ms"<<endl;
-	//cout <<"initializeconditionsib-----namof navs = "<<numOfNavs<<endl;
+	CalculateAve_ib();
+	CalculateFFT_ib();	//2^m	 2^10	
+
+	cout<<"ave================"<<m_dAve<<endl;
+	CalculateSystemValues_ib();	
+	cout <<"InitializeConditions_ib-----navTr = "<<m_dNavTr<<endl;
+	cout <<"InitializeConditions_ib-----imTr = "<<m_dImTr<<endl;
+	//cout <<"InitializeConditions_ib-----extraTime = "<<m_dExtraTime*1000<<" ms"<<endl;
+	//cout <<"InitializeConditions_ib-----namof navs = "<<m_dNumOfNavs<<endl;
 }
-   	
+
+// Function: CalculateSystemValues_ib ========================================
+//
+//	Get all the control system values
+//	arguments:	void
+//	returns:	void
+//	-------------------------------------------------------------------------
+
+void ControlSystemIB2::CalculateSystemValues_ib()
+{		
+	m_dZestR	= 0.265; 
+	m_dZestI	= 0.25454;
+	m_dZest1	= -2 * m_dZestR;
+	m_dZest2	= m_dZestI*m_dZestI + m_dZestR*m_dZestR;
+	
+	cout<<"navtr in cs = ======"<<m_dNavTr<<endl;
+	m_dTs 		= m_dNavTr/10000;			//(seconds)		// = 0.01;		// = 0.0001
+	m_dA 		= 2*m_dKsin * PI/10;		//moet nog n error message vir die ding skryf (waardes moet tussen 2 grense le)
+	
+	//cout<<"-----------a = "<< m_dA <<endl;
+	//cout<<"-----------k_sin = "<< m_dKsin <<endl;
+	//m_dA		= 1.4*2*PI/4;	//m_dKsin * 180/PI)/10;	was 8		// = 400;		
+	
+	m_dH[0][0]	= 1;
+	m_dH[0][1]	= 0;
+	
+	m_dPhi[0][0] 	= 1;
+	m_dPhi[0][1] 	= -m_dA*m_dA*m_dTs;
+	m_dPhi[1][0] 	= m_dTs;
+	m_dPhi[1][1] 	= 1;
+	
+	m_dLp[0][0]	= m_dZest1 + 2;												// = -2 * m_dZestR;		//=   0.7;
+	m_dLp[1][0]	= (1 - m_dZest2 - m_dLp[0][0]) / (m_dA * m_dA * m_dTs); 	// = (m_dLp[0][0] - 0.28)/(m_dA*m_dA*m_dTs);
+	
+	cout <<"lp"<<m_dLp[0][0]<<"and"<<m_dLp[1][0]<<endl;	      
+	cout <<"phi"<<m_dPhi[0][1]<<"and"<<m_dPhi[1][0]<<endl;	
+}
+
+// Function: SaveData_ib =============================
+//
+//	arguments:	void
+//	returns:	void
+//	-------------------------------------------------------------------------
+
+void ControlSystemIB2::SaveData_ib()
+{
+	saveib.FileSaveAccess(m_dNumOfNavs,			4);
+	saveib.FileSaveAccess(m_dNavTr,				4);
+	saveib.FileSaveAccess(m_dImTr,				4);
+	saveib.FileSaveAccess((m_dImTr/m_dNavTr),	4);	//predictSamples
+	saveib.FileSaveAccess(m_dExtraTime,			4);
+	saveib.FileSaveAccess(m_dA,					4);
+	saveib.FileSaveAccess(m_dAve,				4);
+	//saveib.FileSaveAccess(1234,				4);
+	cout<<"-----lalalazz----"<<m_dNumOfNavs<<endl<<m_dNavTr<<endl<<m_dImTr<<endl<<m_dImTr/m_dNavTr<<endl<<m_dExtraTime<<endl<<m_dA<<endl<<m_dAve<<endl;
+}
+
+// Function: Update_ib ===========================================
+//	
+//	creates the x(k+1) for the next perdiod
+//	arguments:	double yplant
+//	returns:	void
+//	-------------------------------------------------------------
+  
+void ControlSystemIB2::Update_ib()			//receive the adress of yplant
+{
+	double	tempX[2] = {0.0, 0.0};
+
+	cout<<m_dYPlant<<endl;
+	//cout<<"xcounter ==="<<m_iXCounter1<<endl;
+	//cout<<m_dyCS<<endl;
+	//cout<<"counterC = "<<m_iCounterC<<endl;
+	
+	tempX[0] = m_dPhi[0][0] * m_dX[0][0] + m_dPhi[0][1] * m_dX[1][0] + m_dLp[0][0] * m_dXer;
+	tempX[1] = m_dPhi[1][0] * m_dX[0][0] + m_dPhi[1][1] * m_dX[1][0] + m_dLp[1][0] * m_dXer;
+	
+	m_dX[0][0] = tempX[0];
+	m_dX[1][0] = tempX[1];
+	m_iCounterC++;
+}
+
+// Function: Outputs_ib ==========================================
+//
+//	calculates the output of the control system
+//	will return value for slice folow
+//	arguments:	void
+//	returns:	void
+//	--------------------------------------------------------------
+
+void ControlSystemIB2::Outputs_ib()
+{   
+	m_dyCS = m_dH[0][0]*m_dX[0][0] + m_dH[0][1]*m_dX[1][0];
+	//cout <<m_dyCS<<endl;
+	NavForSlice				= m_dyCS;
+	m_dYSave[m_iCounterOut] = m_dyCS;
+	m_iCounterOut++;
+
+	saveib.FileSaveAccess(m_dyCS, 2);
+}
+
+void ControlSystemIB2::CloseCS_ib()
+{
+	SaveData_ib();
+	saveib.FileSaveClose();
+}
+
+//-------------------time calculations----------------------------
+
+void ControlSystemIB2::Calculations(long lTa, long lTb, long lTc)
+{
+	m_dTa		= double(lTa);						// where acquisition starts
+	m_dTb		= double(lTb);						// where acquisitions ends
+	m_dTc		= double(lTc);						// end of cardiac cycle
+	
+	m_dTprep 		= 60;									//is nie reg nie!!!!!!!!!!!!!!!!
+	m_dTacq  		= m_dTprep + (m_dTb - m_dTa);			// scanning time and pep time together
+	m_dNumOfNavs	= double(int((m_dTa - m_dTprep) / m_dNavTr));	// calculate
+	m_dTwait 		= m_dTa - m_dTprep - (m_dNavTr * m_dNumOfNavs); 	
+	//m_dTdead		= double(sTRr) - (m_dTwait + (m_dNavTr * m_dNumOfNavs) + m_dTacq);
+				
+	m_dPredictSamples	= int((m_dTc - m_dTa + m_dTprep + m_dTwait) / m_dNavTr);
+	
+	cout<<"Ta 				= "<<m_dTa<<endl;
+	cout<<"Tb 				= "<<m_dTb<<endl;
+	cout<<"Tc 				= "<<m_dTc<<endl;	
+	cout<<"Tprep 			= "<<m_dTprep<<endl;	
+	cout<<"NavTr 			= "<<m_dNavTr<<endl;
+	cout<<"NumOfNavs 		= "<<m_dNumOfNavs<<endl;
+	cout<<"Tacq 			= "<<m_dTacq<<endl;
+	cout<<"Twait 			= "<<m_dTwait<<endl;
+	cout<<"predictSamples	= "<<m_dPredictSamples<<endl;
+	cout<<"==============="<<endl;
+}
+
+void ControlSystemIB2::calculateTdead(short Trr)
+{
+	//sTRr = 1000;
+	int SamplesToAdd;
+	
+	m_dTdead 			= double(sTRr) - (m_dTwait + (m_dNavTr * m_dNumOfNavs) + m_dTacq);
+	m_dSamplesPassed	= int((m_dTacq + m_dTdead + m_dTwait) / m_dNavTr);
+	m_dTimeLeft 		= Modulus_ib((m_dTacq + m_dTdead + m_dTwait),  m_dNavTr);
+		
+ 	if ( m_dTimeLeft > (m_dNavTr / 2) ) 
+ 	{
+ 		m_dSamplesPassed++;
+ 	}	
+	
+	SamplesToAdd = int(m_dSamplesPassed - m_dPredictSamples);
+		
+	if (SamplesToAdd < 0)
+	{
+		cout<<"poop"<<endl;		//lel
+	}
+	
+	for(m_iCounterDead=0; m_iCounterDead<SamplesToAdd; m_iCounterDead++)	
+	{
+		m_dXer		= 0.00;
+		m_dYPlant	= 0;
+
+		Update_ib();
+		Outputs_ib();
+
+		m_iXCounter1++;
+		m_iCounterC	= -1;
+	}
+			
+//  	cout<<"Trr   			= "<<sTRr<<endl;
+//  	cout<<"Tdead 			= "<<m_dTdead<<endl;		
+//  	cout<<"samples_passed 	= "<<m_dSamplesPassed<<endl;
+//  	cout<<"time_left 		= "<<m_dTimeLeft<<endl;		//this is the time that passed extra to the time which fits into full samples
+}
+
+//-------------------getters and setters----------------------------
+
+int ControlSystemIB2::getNoOfNavs()
+{
+	return int(m_dNumOfNavs);	
+}
+
 long ControlSystemIB2::getTwait()
 {
-return long(Twait*1000);		//seconds->us	and double to long
+	return long(m_dTwait * 1000);		//seconds->us	and double to long
 }
 
-
-// Function: SetScoutOnib ==============================
+// Function: setScoutOn_ib ==============================
 //
 //	set that scout is on 
 //	arguments:	bool scout
 //	returns:	void
 //	-----------------------------------------------------
    
-void ControlSystemIB2::SetScoutOnib(bool scout)
+void ControlSystemIB2::setScoutOn_ib(bool bScout)
 {
-	scoutOn = scout;
+	m_bScoutOn = bScout;
 }
 	
-// Function: GetScoutOnib ==============================
+// Function: getScoutOn_ib ==============================
 //
 //	to see whether scout is on.. 
 //	arguments:	void
 //	returns:	bool scoutOn
 //	-----------------------------------------------------
    
-bool ControlSystemIB2::GetScoutOnib()
+bool ControlSystemIB2::getScoutOn_ib()
 {
-	return scoutOn;
+	return m_bScoutOn;
 }
 
 // Function: getCSOut ==============================
@@ -130,64 +316,10 @@ bool ControlSystemIB2::GetScoutOnib()
 
 double ControlSystemIB2::getCSOut()
 {
-	return yCS;
+	return m_dyCS;
 }
 
-
-// Function: xsamplevalib ==============================
-//
-//	just for debug..feeds dummy navigator values
-//	arguments:	void
-//	returns:	void
-//	----------------------------------------------------	
-	
-double ControlSystemIB2::xsamplevalib()
-{	
-	xcounter++;
-	xcounter2++;
-	//cout<<"xcounter ==="<<xcounter<<endl;
-	
-		if (scoutOn == false)			//numOfNavs oppi oomblik 4
-		{	
-			if (xcounter2 >= int(numOfNavs))
-			{
-				xcounter =  xcounter + predictSamples ;
-				xcounter2=0;
-			}
-		}
-	if(xcounter >= 1024)
-	{
-		xcounter = 0;
-	}
-	
-	return sampleval[xcounter];
-}
-		
-// Function: InitScoutValib ==============================
-//
-//	sets xfft to zero
-//	sets counter to zero
-//	arguments:	void
-//	returns:	void
-//	-----------------------------------------------------
-
-void ControlSystemIB2::InitScoutValib()
-{
-	for(counterSVSet =0 ; counterSVSet <= 1024; counterSVSet++)
-	{
-		/*scoutValue*/Xfft[counterSVSet]=0;
-	}
-	counterSV 	= 0;
-	xcounter 	= 0;
-	xcounter2 	= 0;
-	counterOut	= 0;
-	counterC	= -1;
-	saveib.FSIB_open();
-
-	
-}
-
-// Function: SetNavValib ==============================
+// Function: setNavVal_ib ==============================
 //
 //	receives the navigator value
 //	assigns it to the fft input variable if its scout
@@ -197,255 +329,85 @@ void ControlSystemIB2::InitScoutValib()
 //	returns:	void
 //	---------------------------------------------------
 
-void ControlSystemIB2::SetNavValib(double NavValueImport, bool IsScout)
+void ControlSystemIB2::setNavVal_ib(double dNavValueImport, bool bScout)
 {
-	saveib.FSIB_acces(NavValueImport,1);		
-	if (IsScout == true)
+	saveib.FileSaveAccess(dNavValueImport, 1);		
+	if ( bScout )
 	{
-		/*scoutValue*/ Xfft[counterSV]=NavValueImport;
-		counterSV++;
+		/*scoutValue*/ m_dXfft[m_iCounterSV] = dNavValueImport;
+		m_iCounterSV++;
 	}
-	else if (IsScout == false)
+	else //!bScout
 	{
-		yplant = NavValueImport;//-ave;					//ib-nbnbnbnb		
-		//cout<<NavValueImport<<endl;
+		m_dYPlant	= dNavValueImport;//-ave;					//ib-nbnbnbnb		
+		//cout<<dNavValueImport<<endl;
 				
-		x_er =  yplant - yCS;
+		m_dXer		= m_dYPlant - m_dyCS;
 		//cout<<"normal"<<endl;
-		Updateib();
-		Outputsib();
+		Update_ib();
+		Outputs_ib();
 		
-		while (counterC >= (int(numOfNavs)-1))			//numOfNavs oppi oomblik 4
+		while (m_iCounterC >= (int(m_dNumOfNavs)-1))			//numOfNavs oppi oomblik 4
 		{
-			x_er 	= 0.00;
-			yplant 	= 0;
-			if (counterC >= int(numOfNavs + predictSamples-1 ))	// 6-1)
+			m_dXer 		= 0.00;
+			m_dYPlant	= 0;
+			if (m_iCounterC >= int(m_dNumOfNavs + m_dPredictSamples-1 ))	// 6-1)
 			{
-				counterC = -1;
-				//
+				m_iCounterC = -1;
 				break;
 			}
-			//cout<<"perdict"<<endl;
-			Updateib();
-			Outputsib();
+			//cout<<"predict"<<endl;
+			Update_ib();
+			Outputs_ib();
 		}
 	}	
 }
-		
 
-// Function: Outputsib ==========================================
+//-------------------debug----------------------------
+
+// Function: PlayOutCS_ib =========================================
 //
-//	calculates the output of the control system
-//	will return value for slice folow
+//	just for debug..runs control system - modify for real use
 //	arguments:	void
 //	returns:	void
 //	--------------------------------------------------------------
 
-void ControlSystemIB2::Outputsib()
-{   
-	yCS = H[0][0]*x[0][0] + H[0][1]*x[1][0];
-	//cout <<yCS<<endl;
-	ySave[counterOut] = yCS;
-	counterOut++;
-	saveib.FSIB_acces(yCS,2);
-	NavForSlice = yCS;
-}
-
-// Function: Updateib ===========================================
-//	
-//	creates the x(k+1) for the next perdiod
-//	arguments:	double yplant
-//	returns:	void
-//	-------------------------------------------------------------
-  
-void ControlSystemIB2::Updateib()			//receive the adress of yplant
+void ControlSystemIB2::PlayOutCS_ib()
 {
-	double	tempX[2]	= {0.0, 0.0};
-
-	cout<<yplant<<endl;
-	//cout<<"xcounter ==="<<xcounter<<endl;
-	//cout<<yCS<<endl;
-	//cout<<"counterC = "<<counterC<<endl;
-	
-	tempX[0] = phi[0][0] * x[0][0] + phi[0][1] * x[1][0] + Lp[0][0] * x_er;
-	tempX[1] = phi[1][0] * x[0][0] + phi[1][1] * x[1][0] + Lp[1][0] * x_er;
-	
-	x[0][0] = tempX[0];
-	x[1][0] = tempX[1];   
-	counterC++;   
-	
+	//Outputsib();
+	//Updateib();
 }
 
-// Function: CalculateSystemValuesib ========================================
+// Function: XSampleVal_ib ==============================
 //
-//	Get all the control system values
+//	just for debug..feeds dummy navigator values
 //	arguments:	void
 //	returns:	void
-//	-------------------------------------------------------------------------
-
-void ControlSystemIB2::CalculateSystemValuesib()
-{		
-	ZestR	 	=	0.265; 
-	ZestI		=	0.25454;
-	Zest1		=	-2 * ZestR;
-	Zest2		= 	ZestI * ZestI + ZestR * ZestR;
+//	----------------------------------------------------	
 	
-	cout<<"navtr in cs = ======"<<navTr<<endl;
-	Ts 			=	navTr/10000;							//(seconds)			//= 	0.01;							// = 0.0001
-	a 			=	k_sin*2*PI/10;		//moet nog n error message vir die ding skryf (waardes moet tussen 2 grense le)
+double ControlSystemIB2::XSampleVal_ib()
+{	
+	m_iXCounter1++;
+	m_iXCounter2++;
+	//cout<<"xcounter ==="<<m_iXCounter1<<endl;
 	
-	
-	
-	//cout<<"-----------a = "<< a <<endl;
-	//cout<<"-----------k_sin = "<< k_sin <<endl;
-	//a			= 	1.4*2*PI/4;	//k_sin * 180/PI)/10;	was 8									// =	400;		
-	
-	H[0][0]	 	=   1;
-	H[0][1]	 	=   0;
-	
-	phi[0][0] 	=   1;
-	phi[0][1] 	=  	-a*a*Ts;
-	phi[1][0] 	=   Ts;
-	phi[1][1] 	=   1;
-	
-	Lp[0][0]	= Zest1 + 2;									// = -2 * ZestR;						//=   0.7;
-	Lp[1][0]	= (1 - Zest2 - Lp[0][0]) / (a * a * Ts); 	//= 	(Lp[0][0]-0.28)/(a*a*Ts);
-	
-	cout <<"lp"<<Lp[0][0]<<"and"<<Lp[1][0]<<endl;	      
-	cout <<"phi"<<phi[0][1]<<"and"<<phi[1][0]<<endl;	
-}
-
-// Function: SliceSelectionib ==========================================
-//
-//	calculates the slice select matrix
-//	returns the value for slice folowing
-//	arguments:	void ?
-//	returns:	void ?
-//	--------------------------------------------------------------
-
-void ControlSystemIB2::SliceSelectionib()//double in, double scalefactor)
-{
-double trasMatrix[3] = {0};
-double scalefactor;
-double in;
-/*				
-				| sagib |		sagital			
-transMatrix = 	| corib |		coronal
-				| traib |		transverse
-*/ 
-
-trasMatrix[0] = scalefactor * in * .7;
-trasMatrix[1] = 0;
-trasMatrix[2] = scalefactor * in * 2;
-
-}
-
-// Function: getDataib =============================
-//
-//	arguments:	void
-//	returns:	void
-//	-------------------------------------------------------------------------
-
-void ControlSystemIB2::GetDataib()
+		if (m_bScoutOn == false)			//numOfNavs oppi oomblik 4
+		{	
+			if (m_iXCounter2 >= int(m_dNumOfNavs))
+			{
+				m_iXCounter1 += int(m_dPredictSamples);
+				m_iXCounter2 =  0;
+			}
+		}
+	if(m_iXCounter1 >= 1024)
 	{
-	 saveib.FSIB_acces(numOfNavs,4);		
-	 saveib.FSIB_acces(navTr,4);		
-	 saveib.FSIB_acces(imTr,4);		
-	 saveib.FSIB_acces((imTr/navTr),4);	//predictSamples
-	 saveib.FSIB_acces(extraTime,4);	
-	 saveib.FSIB_acces(a,4);	
-	 saveib.FSIB_acces(ave,4);	
-	 saveib.FSIB_acces(1234,4);	
-	 cout<<"-----lalalazz----"<<numOfNavs<<endl<<navTr<<endl<<imTr<<endl<<imTr/navTr<<endl<<extraTime<<endl<<a<<endl<<ave<<endl;
-	 
-	}
-
-
-//-------------------time calculations----------------------------
-
-void ControlSystemIB2::calculations(long Ta1, long Tb1, long Tc1)
-{
-	
-	//Tr										//get from UI
-	//NavTr =									//get from UI  	stel voorlopig	
-	
-	Ta = double(Ta1);							// where acquisition starts
-	Tb = double(Tb1);							// where acquisitions ends
-	Tc = double(Tc1);							// end of cardiac cycle
-	
-	Tprep 		= 60	;								//is nie reg nie!!!!!!!!!!!!!!!!
-	Tacq  		= Tprep + (Tb - Ta);					// scanning time and pep time together
-	numOfNavs 	= double(int((Ta - Tprep) / navTr));				//calculate
-	Twait 		= Ta - Tprep - (navTr * numOfNavs); 	
-				//Tdead 			= double(Trr) - (Twait + (navTr * numOfNavs) + Tacq);
-				
-	predictSamples 	= int((Tc - Ta + Tprep + Twait) / navTr);
-	
-	cout<<"Ta 				= "<<Ta<<endl;
-	cout<<"Tb 				= "<<Tb<<endl;
-	cout<<"Tc 				= "<<Tc<<endl;	
-	cout<<"Tprep 			= "<<Tprep<<endl;	
-	cout<<"NavTr 			= "<<navTr<<endl;
-	cout<<"NumOfNavs 		= "<<numOfNavs<<endl;
-	cout<<"Tacq 			= "<<Tacq<<endl;
-	cout<<"Twait 			= "<<Twait<<endl;
-	cout<<"predictSamples = "<<predictSamples<<endl;
-	
-	cout<<"==============="<<endl;
-
-}
-
-void ControlSystemIB2::calculateTdead(short Trr)
-{
-	//Trr = 1000;
-	int samples_to_be_added;
-	
-	Tdead 				= double(Trr) - (Twait + (navTr * numOfNavs) + Tacq);
-	samples_passed 		= int((Tacq + Tdead + Twait) / navTr);
-	time_left 			= modulusib((Tacq + Tdead + Twait),  navTr);
-
-	
-		
- 	if ( time_left > navTr / 2 ) 
- 	{
- 		samples_passed++;
- 	}	
-	
-	samples_to_be_added = samples_passed - int(predictSamples);
-		
-	if (samples_to_be_added < 0)
-	{
-		cout<<"poop"<<endl;		
+		m_iXCounter1 = 0;
 	}
 	
-	for(counterDead = 0; counterDead < samples_to_be_added; counterDead++)	
-	{
-
-		x_er 	= 0.00;
-		yplant 	= 0;
-		Updateib();
-		Outputsib();
-		xcounter++;
-		counterC = -1;
-	}
-			
-//  	cout<<"Trr   			= "<<Trr<<endl;
-//  	cout<<"Tdead 			= "<<Tdead<<endl;		
-//  	cout<<"samples_passed 	= "<<samples_passed<<endl;
-//  	cout<<"time_left 		= "<<time_left<<endl;			//this is the time that passed extra to the time which fits into full samples
-
+	return sampleval[m_iXCounter1];
 }
-
-
-int ControlSystemIB2::getNoOfNavs()
-{
-	
-return int(numOfNavs);	
-}
-
 
 ///==================================maths===================================================================//
-
 
 // Function: modulusib ==============================
 //
@@ -453,13 +415,13 @@ return int(numOfNavs);
 //	arguments:	double a, double b
 //	returns:	double
 //	-----------------------------------------------------
-double ControlSystemIB2::modulusib(double a, double b)
+double ControlSystemIB2::Modulus_ib(double dA, double dB)
 {
-	int result = static_cast<int>( a / b );
-	return a - static_cast<double>( result ) * b;
+	int result = static_cast<int>( dA / dB );
+	return dA - static_cast<double>( result ) * dB;
 }
 
-// 	Function: CalculateAveib ========================================
+// 	Function: CalculateAve_ib ========================================
 
 
 //	arguments:	
@@ -467,20 +429,19 @@ double ControlSystemIB2::modulusib(double a, double b)
 
 //	-------------------------------------------------------------------
 
-void ControlSystemIB2::CalculateAveib()
+void ControlSystemIB2::CalculateAve_ib()
 {
 	double sum;
-	int iii;
 	sum = 0;
-	for(iii=0;iii<256;iii++)
+	for(int i=0; i<256; i++)
 	{
-		sum = sum + Xfft[iii];
+		sum += m_dXfft[i];
 		//cout<<sum<<endl;
 	}
-	ave =  sum/256;
+	m_dAve = sum/256;
 }
 
-// 	Function: CalculateFFTib ========================================
+// 	Function: CalculateFFT_ib ========================================
 
 //	This computes an in-place complex-to-complex FFT 
 //	x and y are the real and imaginary arrays of 2^m points.
@@ -496,104 +457,104 @@ void ControlSystemIB2::CalculateAveib()
 //	FFT (Fast Fourier Transform)
 //	-------------------------------------------------------------------
 
-void ControlSystemIB2::CalculateFFTib()
+void ControlSystemIB2::CalculateFFT_ib()
 {		
-		//cout<<"CalculateFFTib()"<<endl;
-		int t;
+	//cout<<"CalculateFFT_ib()"<<endl;
+
+	//for (int t=0;t<1024;t++)
+	//{
+	//	cout<<m_dXfft[t]<<endl;	
+	//}
 	
-	// for (t=0;t<1024;t++)
-	// {
-	// 	cout <<Xfft[t]<<endl;	
-	// }
-	
-		//double X[] = sampleval;
-		//get an array from filter
-		//FFT (Fast Fourier Transform)
+	//double X[] = sampleval;
+	//get an array from filter
+	//FFT (Fast Fourier Transform)
 	
 	short int dir = 1;
-	long n,i,i1,j,k,i2,l,l1,l2;
-	double c1,c2,tx,ty,t1,t2,u1,u2,z;
+	long i,j,k,l;
+	long n, i1,i2, l1,l2;
+	double c1,c2, tx,ty,t1,t2, u1,u2, z;
 	double y[2000] = {0};
-	cout <<"startfft"<<endl;	   
+
+	cout <<"start fft"<<endl;	   
 	long m = 10;
 	/* Calculate the number of points */
 	n = 1;
-	for (i=0;i<m;i++) 
-	n *= 2;
+	for (int i=0; i<m; i++)	n *= 2;
 	//cout<< "n = "<<n;
+
 	/* Do the bit reversal */
 	i2 = n >> 1;
 	j = 0;
-	for (i=0;i<n-1;i++)
+	for (i=0; i<n-1; i++)
 	{
 		if (i < j) 
 		{
-			tx = Xfft[i];
-			ty = y[i];
-			Xfft[i] = Xfft[j];
-			y[i] = y[j];
-			Xfft[j] = tx;
-			y[j] = ty;
+			ty			= y[i];
+			tx			= m_dXfft[i];
+			m_dXfft[i]	= m_dXfft[j];
+			m_dXfft[j]	= tx;
+			y[i]		= y[j];
+			y[j]		= ty;
 		}
 		k = i2;
 		while (k <= j) 
 		{
-			j -= k;
+			j  -= k;
 			k >>= 1;
-			}
-			j += k;
 		}
+		j += k;
+	}
 	
 	/* Compute the FFT */
 	c1 = -1.0; 
 	c2 = 0.0;
 	l2 = 1;
-	for (l=0;l<m;l++)
+	for (l=0; l<m; l++)
 	{
-		l1 = l2;
+		l1	 = l2;
 		l2 <<= 1;
-		u1 = 1.0; 
-		u2 = 0.0;
-		for (j=0;j<l1;j++) 
+		u1	 = 1.0; 
+		u2	 = 0.0;
+		for (j=0; j<l1; j++) 
 		{
-			for (i=j;i<n;i+=l2)
+			for (i=j; i<n; i+=l2)
 			{
-				i1 = i + l1;
-				t1 = u1 * Xfft[i1] - u2 * y[i1];
-				t2 = u1 * y[i1] + u2 * Xfft[i1];
-				Xfft[i1] = Xfft[i] - t1; 
-				y[i1] = y[i] - t2;
-				Xfft[i] += t1;
-				y[i] += t2;
+				i1			= i + l1;
+				t1			= u1*m_dXfft[i1] - u2*y[i1];
+				t2			= u1*y[i1] + u2*m_dXfft[i1];
+				m_dXfft[i1] = m_dXfft[i] - t1; 
+				y[i1]		= y[i] - t2;
+				m_dXfft[i] += t1;
+				y[i]	   += t2;
 			}
-			z = u1 * c1 - u2 * c2;
-			u2 = u1 * c2 + u2 * c1;
-			u1 = z;
+			z	= u1*c1 - u2*c2;
+			u2	= u1*c2 + u2*c1;
+			u1	= z;
 		}
 		c2 = sqrt((1.0 - c1) / 2.0);
-		if (dir == 1) 
-		c2 = -c2;
+		if (dir == 1)	c2 = -c2;
 		c1 = sqrt((1.0 + c1) / 2.0);
 	}
 	
 	/* Scaling for forward transform */
 	if (dir == 1)
 	{
-		for (i=0;i<n;i++)
+		for (i=0; i<n; i++)
 		{
-			Xfft[i] /= n;
-			y[i] /= n;
-			 saveib.FSIB_acces(Xfft[i],3);				//write fft values to file
-			//t <<Xfft[i]<<endl;
-			//cout <<"fftloop"<<endl;	   
+			m_dXfft[i]	/= n;
+			y[i]		/= n;
+			 saveib.FileSaveAccess(m_dXfft[i], 3);		//write fft values to file
+			//cout<<m_dXfft[i]<<endl;
+			//cout<<"fftloop"<<endl;	   
 		}
 	}
-	cout<<"dc value =="<<Xfft[0]<<endl;
-	Xfft[0]=0;
-	Maxib(Xfft);		//see pg 269	adress of the first position in the array
+	cout<<"dc value =="<<m_dXfft[0]<<endl;
+	m_dXfft[0] = 0;
+	Max_ib(m_dXfft);		//see pg 269	adress of the first position in the array
 }
 
-// Function: maxib ========================================
+// Function: Max_ib ========================================
 //
 //	calculate the frequency of the respiration from the fft 
 //	of scout collected data
@@ -601,32 +562,49 @@ void ControlSystemIB2::CalculateFFTib()
 //	returns:	void
 //	-------------------------------------------------------
 
-void ControlSystemIB2::Maxib(double *in)
+void ControlSystemIB2::Max_ib(double *dIn)
 {
 	double out = 0;
 	int i;
 	
 	//cout <<"------------------------------------------"<<endl;
 	
-	for (i=0;i<32;i++)		//511 = size / 2 - 1 must change this!!!
+	for (i=0; i<32; i++)		//511 = size / 2 - 1 must change this!!!
 	{	
-		//cout <<fabs(*(in+i))<<endl;
-		if( out < fabs(*(in+i)) )			// *(in+1) is the second position in the array, C knows how big each position is .. see pg 269 if unclear
+		//cout <<fabs(*(dIn+i))<<endl;
+		if( out < fabs(*(dIn + i)) )			// *(dIn+1) is the second position in the array, C knows how big each position is .. see pg 269 if unclear
 		{
-			out = fabs(*(in+i));
-			k_sin = i+1; 		//+1 to compensate for the 0
+			out		= fabs(*(dIn + i));
+			m_dKsin	= i+1; 		//+1 to compensate for the 0
 			cout <<"freq = "<<i<<endl;
 		}
 	}
-	//DrawSinib();			///just to test. remove later
+	//DrawSin_ib();			///just to test. remove later
 }
 
-void ControlSystemIB2::CloseCSib()
+// Function: SliceSelection_ib ==========================================
+//
+//	calculates the slice select matrix
+//	returns the value for slice folowing
+//	arguments:	void ?
+//	returns:	void ?
+//	--------------------------------------------------------------
+
+void ControlSystemIB2::SliceSelection_ib()//double in, double scalefactor)
 {
-	GetDataib();
-	saveib.FSIB_close();
-}
+	double trasMatrix[3] = {0};
+	double scalefactor;
+	double in;
+	/*				
+					| sagib |		sagital			
+	transMatrix = 	| corib |		coronal
+					| traib |		transverse
+	*/
 
+	trasMatrix[0] = scalefactor * in * .7;
+	trasMatrix[1] = 0;
+	trasMatrix[2] = scalefactor * in * 2;
+}
 
 //====================================0===0==========================================
 //======================================o============================================
@@ -634,13 +612,10 @@ void ControlSystemIB2::CloseCSib()
 //=====================================---==========================================
 
 //=================RIP===================
-
-
-
 	
-// Function: CalculatePeriodib ========================================
+// Function: CalculatePeriod_ib ========================================
 // 
-// double ControlSystemIB2::CalculatePeriodib(double *scoutval)
+// double ControlSystemIB2::CalculatePeriod_ib(double *scoutval)
 // {		
 // 	//get an array from filter
 // 	double period;
@@ -648,10 +623,9 @@ void ControlSystemIB2::CloseCSib()
 // 	return period
 // }
 
+// Function: LowPassFilter_ib ========================================
 
-// Function: LowPassFilterib ========================================
-
-// double ControlSystemIB2::LowPassFilterib(double input)
+// double ControlSystemIB2::LowPassFilter_ib(double input)
 //{		
 	
 // double weight = 0.1;			// weight = 1 same as input
@@ -666,34 +640,32 @@ void ControlSystemIB2::CloseCSib()
 //  return output;
 // }
 
+/*
+// Function: DrawSin_ib ========================================
 
-
-// Function: DrwaSinib ========================================
-
-void ControlSystemIB2::DrawSinib()		///just to test. remove later
+void ControlSystemIB2::DrawSin_ib()		///just to test. remove later
 {
-cout <<"-------------------created sin---------------k_sin= "  << k_sin << "--------" <<endl;
-double Ts = 0.01;
-double sss;
-int t;
+	cout <<"-------------------created sin---------------k_sin= "  << k_sin << "--------" <<endl;
+	double Ts = 0.01;
+	double sss;
+	int t;
 
-for (t=0;t<1024;t++)
-{
-	sss = sin(2*PI*t*Ts*(k_sin)/10);	//= sin(2*PI*t*Ts*(k_sin)/10);;  met Ts= 0.01 en a matlab sin wat so lyk =sin(2*pi*t*0.01*0.14) is dit perfek identies
-	//cout <<sss<<endl;				///en sin_k = 14	en die 10 kom van  1024 = (2^10) van die fft
+	for (t=0;t<1024;t++)
+	{
+		sss = sin(2*PI*t*Ts*(k_sin)/10);	//= sin(2*PI*t*Ts*(k_sin)/10);;  met Ts= 0.01 en a matlab sin wat so lyk =sin(2*pi*t*0.01*0.14) is dit perfek identies
+		//cout <<sss<<endl;				///en sin_k = 14	en die 10 kom van  1024 = (2^10) van die fft
+	}
 }
-}
-
 
 // Function: Startib ============================================
    
 void ControlSystemIB2::Startib()
-  {
-  }
+{
+}
   
 // Function: Terminateib ========================================
 
 void ControlSystemIB2::Terminateib()
 {
-	
 }
+*/
