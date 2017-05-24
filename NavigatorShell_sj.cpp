@@ -16,15 +16,16 @@
 //
 //	-----------------------------------------------------------------------------
 // Interface and definitions
-#include "MrServers/MrImaging/seq/common/Nav/NavigatorShell.h"
+#include "MrServers/MrImaging/seq/a_CV_nav_VE11/NavigatorShell_sj.h"
+
 #include "MrServers/MrImaging/seq/common/Nav/NavigatorICEProgDef.h"
 #include "MrServers/MrImaging/Ice/IceProgramNavigator/NavigatorFBData.h"
 #include "MrServers/MrImaging/libSeqSysProp/SysProperties.h"
 
-#include "ProtBasic/Interfaces/MrNavigator.h"
-
 #include "MrServers/MrProtSrv/MrProt/Physiology/MrPhysiology.h"
 #include "MrServers/MrProtSrv/MrProt/Navigator/CNavigator.h"
+
+#include "ProtBasic/Interfaces/MrNavigator.h"
 
 // namespace check
 #ifndef SEQ_NAMESPACE
@@ -1154,7 +1155,31 @@ NLSStatus NavigatorShell::run(MrProt& rMrProt, SeqLim& rSeqLim, SeqExpo& rSeqExp
 {
   static const char* const ptModule = "NavigatorShell::run";
   NLS_STATUS lStatus = SEQU_NORMAL;
-  sSLICE_POS* pSlcPos = NULL; 
+  sSLICE_POS* pSlcPos = NULL;
+
+/*  
+	//-------------------------------------------------------//ib
+	//m_pRunLoopNav->m_MyFileIB.FileSaveOpen(1);		//ib
+	//m_pRunLoopNav->m_MyControlIB.CSIB_model(2, 4, 90);		//ib=del this...just make sure
+  	m_pRunLoopNav->m_MyControlIB.InitScoutVal_ib();  
+  		  		cout<<"----------scout start----------------"<<endl;
+    m_pRunLoopNav->m_MyControlIB.setScoutOn_ib(true);		//ib
+*/
+	m_pRunLoopNav->runNavBefore(rMrProt, rSeqLim, rSeqExpo, pSlcPos);		//ib - run scout to collect model data//hi-jack the nav-before
+/*
+    m_pRunLoopNav->m_MyControlIB.setScoutOn_ib(false);		//ib
+  	           	cout<<"----------scout end----------------"<<endl;
+        		
+  	           	cout<<"------start acq ----= "<<m_pRunLoopNav->m_sNav0.getTimeStartAcq()<<endl;
+	m_pRunLoopNav->m_MyControlIB.InitializeConditions_ib(m_pRunLoopNav->m_sNav0.getNoOfNavs(),m_pRunLoopNav->m_sNav0.getNavTR_ms(),rMrProt.tr()[0]);		//ib
+	m_pRunLoopNav->m_MyControlIB.Calculations(m_pRunLoopNav->m_sNav0.getTimeStartAcq(), m_pRunLoopNav->m_sNav0.getTimeEndAcq(), m_pRunLoopNav->m_sNav0.getTimeEndCardiac());
+	
+
+//--done with this part	
+// 		cout<<"----------control output----------------"<<endl;
+//   for(int i=0; i<=1024; i++)	m_pRunLoopNav->m_MyControlIB.PlayOutCS_ib();		//ib
+//-------------------------------------------------------//ib
+*/
 
   m_bTraceAlways = true;
   //m_bDebug = true;

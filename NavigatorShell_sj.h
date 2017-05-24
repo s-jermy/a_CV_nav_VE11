@@ -5,17 +5,17 @@
 #define DO_NOT_PERTURB_SIMULATION
 //#define LOCAL_UNIT_TEST
 
-#include "MrServers/MrMeasSrv/SeqIF/SeqBuffer/SeqLim.h"
-
 #include "MrServers/MrProtSrv/MrProt/MrProt.h"
+
+#include "MrServers/MrMeasSrv/SeqIF/SeqBuffer/SeqLim.h"
 #include "MrServers/MrMeasSrv/SeqIF/libRT/sSYNC.h"
 #include "MrServers/MrMeasSrv/SeqIF/libRT/SEQSemaphore.h"
 #include "MrServers/MrMeasSrv/SeqIF/csequence.h"
 
-#include "MrServers/MrImaging/libSBB/SBBNavigator.h"
-#include "MrServers/MrImaging/seq/common/Nav/NavUI.h"
+#include "MrServers/MrImaging/seq/a_CV_nav_VE11/NavUI_sj.h"
+#include "MrServers/MrImaging/seq/a_CV_nav_VE11/SeqLoopNav_sj.h"
+#include "MrServers/MrImaging/seq/a_CV_nav_VE11/SBBNavigator_sj.h"
 #include "MrServers/MrImaging/seq/common/Nav/NavigatorICEProgDef.h"
-#include "MrServers/MrImaging/seq/common/Nav/SeqLoopNav.h"
 
 #if defined __A_TRUFI_CV_NAV
 
