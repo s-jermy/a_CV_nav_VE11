@@ -15,9 +15,11 @@
 //     Classes:
 //
 //    -----------------------------------------------------------------------------
+//		Inherits SeqBuildBlockNavigator to add extra ui functionality
+//	  -----------------------------------------------------------------------------
 
-#ifndef SBBNAVIGATOR_H
-#define SBBNAVIGATOR_H 1
+#ifndef SBBNAVIGATOR_SJ_H
+#define SBBNAVIGATOR_SJ_H 1
 
 #define __NAV_ICE_BUFFER_LENGTH 3  // The maximum number of ice results returned.
 
@@ -39,6 +41,9 @@
 #include "MrServers/MrMeasSrv/SeqIF/libRT/include/SEQSemaphore.h"
 #include "MrServers/MrProtSrv/MrProt/SeqIF/SeqExpoRFBlockInfo.h"
 
+#include "MrServers/MrImaging/seq/common/Nav/SBBNavigator.h"
+
+/*
 #ifdef LOCAL_SeqLoop
     #ifdef __IMP_EXP
     #undef __IMP_EXP
@@ -56,32 +61,37 @@
 
 #define __SBBNAVIGATOR_FEEDBACK_BUFFER_LENGTH   (16)  // The maximum number of ice results returned.
 #define SEQDebug_ShowFeedbackData (1)
+*/
 
 #include "MrServers/MrImaging/libSBB/SBBNavigatorMdhDef.h"
 
+/*
 // Defining the different actions following evaluation of feedback
 enum eNavDecideCode { DoNothing=1,
                       BreakAndRepeatNavigator,
                       ShiftSlicePositionAndProceed,
                       RopeReorderAndProceed };
+*/
 
 /// \ingroup grp_libsbb
 /// \brief  SBB that implements a navigator
 /// \todo add documentation
-class __IMP_EXP SeqBuildBlockNavigator : public SeqBuildBlock
+class /*__IMP_EXP*/ SeqBuildBlockNavigator_sj : public SeqBuildBlockNavigator
 {
 public:
 
-  SeqBuildBlockNavigator (SBBList* /*pSBBList*/, char* pIdent);
+  SeqBuildBlockNavigator_sj (SBBList* /*pSBBList*/, char* pIdent);
 
-  virtual ~SeqBuildBlockNavigator();
+  virtual ~SeqBuildBlockNavigator_sj();
 
+/*
   bool   init     (SeqLim &rSeqLim);
   bool   prep     (MrProt &rMrProt, SeqLim &rSeqLim, SeqExpo &rSeqExpo);
   bool   run      (MrProt &rMrProt, SeqLim &rSeqLim, SeqExpo &rSeqExpo, sSLICE_POS* pSLC);
   bool   runIR    (MrProt &rMrProt, SeqLim &rSeqLim, SeqExpo &rSeqExpo, sSLICE_POS* pSLC);
-
-  bool   decide   (long lPrePost, long lKernelMode, MrProt&  /*rMrProt*/, SeqLim &rSeqLim, SeqExpo& /*rSeqExpo*/, sSLICE_POS* /*pSLC*/);
+*/
+  //bool   decide   (long lPrePost, long lKernelMode, MrProt&  /*rMrProt*/, SeqLim &rSeqLim, SeqExpo& /*rSeqExpo*/, sSLICE_POS* /*pSLC*/);
+/*
   eNavDecideCode getNavDecideCode();
   bool   runPause (unsigned long lPauseDuration_us, bool bUseWakeup);
   bool   waitForWakeup ();
@@ -172,9 +182,27 @@ public:
   void   setRelevantADC(bool getalBValue);
   MrProtocolData::SeqExpoRFInfo getSelIRRFInfoPerRequest();
   long   getSelIRDurationPerRequest();
+*/
+  long getNoOfNavs(); 					//JK2008
+  void setNoOfNavs(long lValue); 		//JK2008
+  long getTimeStartAcq(); 				//ib
+  void setTimeStartAcq(long lValue); 	//ib
+  long getTimeEndAcq(); 				//ib
+  void setTimeEndAcq(long lValue); 		//ib
+  long getTimeEndCardiac(); 			//ib
+  void setTimeEndCardiac(long lValue); 	//ib
+  long getNavTR_ms(); 					//ib
+  void setNavTR_ms(long lValue); 		//ib
+  long getCont1(); 						//ib
+  void setCont1(long lValue); 			//ib
+  long getScoutLength(); 				//ib
+  void setScoutLength(long lValue); 	//ib
+  long getSliceSelection(); 			//ib
+  void setSliceSelection(long lValue); 	//ib
 
 protected:
 
+/*
   bool   m_bUseSpoiler;
   bool   m_bGradSpoiling;
   bool   m_bUseIRSel;
@@ -234,9 +262,11 @@ protected:
   double m_dNavShiftAmount_mm;
   bool   m_bNavReferencePositionOK;
   double m_adNewAcceptPosition;
+*/
 
 private:
 
+/*
   sRF_PULSE_EXT m_RF090;
   sRF_PULSE_EXT m_RF180;
 
@@ -290,11 +320,20 @@ private:
   double m_dScaleSSThickness;
   MrProtocolData::SeqExpoRFInfo m_SelIRRFInfoPerRequest;
   long   m_SelIRDurationPerRequest;
+*/
 
+  long m_lNoOfNavs;				//ib
+  long m_lTimeStartAcq;			//ib
+  long m_lTimeEndAcq;			//ib
+  long m_lTimeEndCardiac;		//ib
+  long m_lNavTR_ms;				//ib	
+  long m_lCont1;				//ib	
+  long m_lScoutLength;			//ib	
+  long m_lSliceSelection;		//ib
 
-  SeqBuildBlockNavigator(const SeqBuildBlockNavigator &right);
+  SeqBuildBlockNavigator_sj(const SeqBuildBlockNavigator_sj &right);
 
-  const SeqBuildBlockNavigator &operator=(const SeqBuildBlockNavigator &right);
+  const SeqBuildBlockNavigator_sj &operator=(const SeqBuildBlockNavigator_sj &right);
 };
 
 
