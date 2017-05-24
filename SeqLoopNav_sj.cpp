@@ -15,14 +15,15 @@
 //     Classes:
 //
 //    -----------------------------------------------------------------------------
-#include "MrServers/MrImaging/seq/common/Nav/SeqLoopNav.h"
-#include "MrServers/MrImaging/seq/common/Nav/NavigatorShell.h"
+#include "MrServers/MrImaging/seq/a_CV_nav_VE11/SeqLoopNav_sj.h"
+#include "MrServers/MrImaging/seq/a_CV_nav_VE11/NavigatorShell_sj.h"
+#include "MrServers/MrImaging/seq/a_CV_nav_VE11/SBBNavigator_sj.h"
+#include "MrServers/MrImaging/seq/a_CV_nav_VE11/NavUI_sj.h"
+
 #include "MrServers/MrImaging/libSeqUtil/libSeqUtil.h"
 #include "MrServers/MrImaging/libSBB/libSBBmsg.h"
 #include "MrServers/MrImaging/ut/libsequt.h"
 #include "MrServers/MrImaging/Ice/IceProgramNavigator/NavigatorFBData.h"
-#include "MrServers/MrImaging/libSBB/SBBNavigator.h"
-#include "MrServers/MrImaging/seq/common/Nav/NavUI.h"
 
 #include "MrServers/MrMeasSrv/SeqIF/csequence.h"
 #include "MrServers/MrMeasSrv/CoilIF/SelectedCoilElements.h"
@@ -161,6 +162,16 @@ bool SeqLoopNav::prep (MrProt &rMrProt, SeqLim &rSeqLim, SeqExpo &rSeqExpo)
     m_sNav0.setNavPulseType             ( rMrProt.NavigatorParam().getalFree()[Label_SelectionBox_NavPulseType]);
     m_sNav0.setNavMatrix                ( rMrProt.NavigatorParam().getalFree()[Label_Long_NavMatrix]);
     m_sNav0.setNavFov                   ( rMrProt.NavigatorParam().getalFree()[Label_Long_NavFov]);
+
+	// new UI elements from ib
+	m_sNav0.setNoOfNavs					( rMrProt.NavigatorParam().getalFree()[Label_Long_NoOfNavs]);			//JK2008
+	m_sNav0.setNavTR_ms					( rMrProt.NavigatorParam().getalFree()[Label_Long_NavTR_ms]);			//ib
+	m_sNav0.setScoutLength				( rMrProt.NavigatorParam().getalFree()[Label_Long_ScoutLength]);		//ib
+	m_sNav0.setTimeStartAcq				( rMrProt.NavigatorParam().getalFree()[Label_Long_TimeStartAcq]);		//ib
+	m_sNav0.setTimeEndAcq				( rMrProt.NavigatorParam().getalFree()[Label_Long_TimeEndAcq]);			//ib
+	m_sNav0.setTimeEndCardiac			( rMrProt.NavigatorParam().getalFree()[Label_Long_TimeEndCardiac]);		//ib
+	m_sNav0.setSliceSelection			( rMrProt.NavigatorParam().getalFree()[Label_Long_SliceSelection]);		//ib
+
     m_sNav0.setNavAcceptancePosition_mm ((double) rMrProt.NavigatorParam().getadFree()[Label_Double_NavAcceptancePosition]);
     m_sNav0.setNavAcceptanceWidth_mm    ((double) rMrProt.NavigatorParam().getadFree()[Label_Double_NavAcceptanceWidth]);
     m_sNav0.setNavSearchPosition_mm     ((double) rMrProt.NavigatorParam().getadFree()[Label_Double_NavSearchPosition]);
@@ -418,8 +429,6 @@ bool SeqLoopNav::runOuterSliceLoopKernel (pSEQRunKernel pf, MrProt &rMrProt, Seq
 //  -------------------------------------------------------
 bool SeqLoopNav::runKernelCallsLoop (pSEQRunKernel pf, MrProt &rMrProt, SeqLim &rSeqLim, SeqExpo &rSeqExpo, sSLICE_POS* pSlcPos, sREADOUT* psADC)
 {
-
-
     static const char *ptModule  = {"SeqLoopNav::runKernelCallsLoop"};
     NLS_STATUS lStatus           = SBB_NORMAL;
 
@@ -438,6 +447,14 @@ bool SeqLoopNav::runKernelCallsLoop (pSEQRunKernel pf, MrProt &rMrProt, SeqLim &
             // Note that in this case the T2prep is played AFTER the navigator block.
             if ( m_SBBOptfsPriorRO.isPrepared() ) 
             {
+				/*
+				#ifndef WIN32																				//ib
+					m_myPMU.getStatisticData(myStatistics);														//ib
+					m_MyControlIB.CalculateTdead(myStatistics->sECGOnlineStat.shPreviousPeriod);				//ib
+					cout<<"Previous RR interval is "<<myStatistics->sECGOnlineStat.shPreviousPeriod<<endl;		//ib
+				#endif
+				*/
+
 #ifdef SHOW_LOOP_STRUCTURE 
                 if ( IS_TR_LAND(rSeqLim)  && m_SBBOptfsPriorRO.isPrepared() )   {   ShowEvent ("m_SBBOptfsPriorRO");   }
 #endif
@@ -624,240 +641,292 @@ bool SeqLoopNav::runNavBefore (MrProt &rMrProt, SeqLim &rSeqLim, SeqExpo &rSeqEx
     m_sNav0.setNavPercentComplete(getNavPercentComplete());
     m_sNav0.setNavPercentAccepted(getNavPercentAccepted());
 
-    //  Reset the semaphore for fSEQReceive
-    if (!m_sNav0.semaphoreRelease(&m_sSemaphore))
-    {
-        Trace (rSeqLim, ptModule, "m_sNav0.semaphoreRelease() FAILED");
-        setNLSStatus(m_sNav0.getNLSStatus());
-        return false;
-    }
-
-    //  Play out the navigator
-    if (!m_sNav0.run(rMrProt,rSeqLim,rSeqExpo,pSlcPos))
-    {
-        Trace (rSeqLim, ptModule, "m_sNav0.run() FAILED");
-        setNLSStatus(m_sNav0.getNLSStatus());
-        return false;
-    }
-
-    // Set a flag to indicate that we are ready to receive the next feedback.
-    if (!m_sNav0.semaphoreAcquire(&m_sSemaphore))
-    {
-        Trace (rSeqLim, ptModule, "m_sNav0.semaphoreAcquire() FAILED");
-        setNLSStatus(m_sNav0.getNLSStatus());
-        return false;
-    }
-
-    //  Before checking for feedback, add some delay time to allow for data transfer, processing, etc.
-    if (!m_sNav0.runPause(1000*m_sNav0.getNavSleepDuration_ms(),true))
-    {
-        Trace (rSeqLim, ptModule, "m_sNav0.runPause() FAILED");
-        setNLSStatus(m_sNav0.getNLSStatus());
-        return false;
-    }
-
-    //  Wait until the "WAKEUP" code is seen by the DSPs
-    if (!m_sNav0.waitForWakeup())
-    {
-        Trace (rSeqLim, ptModule, "m_sNav0.waitForWakeup() FAILED");
-        setNLSStatus(m_sNav0.getNLSStatus());
-        return false;
-    }
-
-#ifdef WIN32
-    {
-        //  When the sequence is run in simulation mode, execute fSEQReceive manually, so that the function
-        //  can be tested.
-        SEQData rSEQData;
-        NavigatorFBData sNavigatorFBData;
-
-        float fIceResult_1 = 128.;
-        float fIceResult_2 = 125.;
-        if ((m_sNav0.getNavCount()>2)&&(m_sNav0.getNavCount()%5==0)) fIceResult_1 = 32.;
-
-        // Prepare the feedback buffer
-        sNavigatorFBData.lNumber = m_sNav0.getNavNumber();
-        sNavigatorFBData.lCount  = m_sNav0.getNavCount();
-        sNavigatorFBData.fResult = fIceResult_1;
-        sNavigatorFBData.fMAGAcceptPos = fIceResult_2;
-
-        rSEQData.setID("NAV");
-
-        // "Deliver" the feedback
-        if( !rSEQData.setData (&sNavigatorFBData, sizeof(sNavigatorFBData)) )
-        {
-            Trace (rSeqLim, ptModule, "rSEQData.setData() FAILED");
-            setNLSStatus( SEQU_ERROR );
-            return false;
-        }
-
-        // "Receive" the feedback
-        NLS_STATUS lStatus = receive(rSeqLim,rSeqExpo,rSEQData);
-        if ( (NLS_SEVERITY(lStatus)!=NLS_SUCCESS) )
-        {
-            Trace (rSeqLim, ptModule, "receive() FAILED");
-            setNLSStatus( lStatus );
-            return false;
-        }
-    }
-#endif
-
-    //  ---------------------------------------------------------------------------------------------
-    //  Unless this is a preparing scan, wait for the feedback from the ICE program (see fSEQReceive)
-    //  ---------------------------------------------------------------------------------------------
-    if( m_lKernelMode == KERNEL_PREPARE )
-    {
-        if (m_bTraceNavFeedback)
-        {
-            TRACE_PUT1(TC_INFO,TF_SEQ,"%s: Prepare scan - no feedback",ptModule);
-        }
-    }
+	//ib -start ----------------------------------------------------------------------
+    //		- this is for the scout
+    //			set the number of navs to be run = 1024, (which is 2^10, fot the FFT)	
+    //			hopefully this will repeat the nav 1024 times and i can collect the data for the model calculations
+    //	------------------------------------------------------------------------------
+    
+	/*
+    if (m_MyControlIB.getScoutOn_ib())
+	{
+		lNavNumberEnd = 2;		//=getsensitivity;
+	}
     else
     {
-        if (!m_sNav0.waitForFeedback(&m_sSemaphore,m_sNav0.getNavPollInterval_ms()*1000))
-        {
-            Trace (rSeqLim, ptModule, "m_sNav0.waitForFeedback() FAILED");
-            setNLSStatus(m_sNav0.getNLSStatus());
-            return false;
-        }
+		lNavNumberEnd = m_MyControlIB.getNoOfNavs();
     }
-
-    // ------------------------------------------------------------------------
-    //  Decide here what to do with the navigator feedback -> m_eNavDecideCode0
-    // ------------------------------------------------------------------------
-    if (!m_sNav0.decide(0,m_lKernelMode,rMrProt,rSeqLim,rSeqExpo,pSlcPos))
-    {
-        Trace (rSeqLim, ptModule, "m_sNav0.decide() FAILED");
-        setNLSStatus(SEQU_ERROR);
-        return false;
-    }
-    m_eNavDecideCode0 = m_sNav0.getNavDecideCode();
-    setValidNavShiftVector(false);
-    m_dNavShiftAmountCorrected = 0.0;
-
-	// ycc CHARM 00382011
-	// No repeat scan for this mode during unit test - fix energy and scan time estimation error
-	if ( (rSeqLim.getSeqDebugMode().getDebugMask() & UNITTEST_ON) && (m_sNav0.getNavMode() == Value_NavModeMonitorOnly) )
-    {
-		m_eNavDecideCode0 = DoNothing;
-    }
-
-    //  ----------------------------------------------------
-    //  Perform the slice-shift required for slice-following
-    //  ----------------------------------------------------
-    if (m_eNavDecideCode0 == ShiftSlicePositionAndProceed)
-    {
-        // -----------------------------------------------------------------------------
-        // Calculate the shift vector, which is used later to modify the slice positions
-        // -----------------------------------------------------------------------------
-        double dZ = (double) m_sNav0.getNavShiftAmountCorrected_mm();
-
-        if (m_bTraceNavFeedback)
-        {
-            TRACE_PUT3(TC_INFO,TF_SEQ,"%s: Shift amount  %8.3f (REFPOS: %8.3f)",
-                ptModule,dZ,m_sNav0.getNavReferencePosition_mm());
-        }
-
-        switch (m_sNav0.getNavPulseType())
-        {
-        case Value_NavPulseType2DPencil:
-            m_sNavShiftVector = rMrProt.navigatorArray()[0].normal();
-            break;
-
-        case Value_NavPulseTypeCrossedPair:
-            NavigatorArray& rNavArray = rMrProt.navigatorArray();
-            Navigator       sNav180   = rNavArray[1];
-            sNav180.rotationAngle(0);
-            VectorPat<double> e_phase, e_read;
-            if( !sNav180.orientation(e_phase,e_read) )
-            {
-                Trace (rSeqLim, ptModule, "xxyy() FAILED");
-                setNLSStatus(SEQU_ERROR);
-                return false;
-            }
-            m_sNavShiftVector = e_read;
-            break;
-        }
-        m_dNavShiftAmountCorrected = dZ;
-        m_sNavShiftVector *= dZ;
-        setValidNavShiftVector(true);
-
-#if defined __A_TRUFI_CV_NAV
-        // For CV_nav, the shift is applied in the SBBTrufiCVKernel instead, and so the following part is skipped.
-#else
-        //  ---------------------------------------------
-        //  Modify all slice positions in the inner loops
-        //  ---------------------------------------------
-        SliceSeries& rSliceSeries = rMrProt.sliceSeries();
-        long lInnerSliceCounter = m_lInnerSliceCounter;
-        for (m_lInnerSliceCounter = m_lInnerSliceNumber-1; m_lInnerSliceCounter >=0; --m_lInnerSliceCounter )
-        {
-            if (!mapLoopCounterToSliceIndex(rMrProt) )
-            {
-                Trace (rSeqLim, ptModule, "mapLoopCounterToSliceIndex() FAILED");
-                return false;
-            }
+	*/
+	lNavNumberEnd = m_sNav0.getNoOfNavs();
+	//ib -end -----------------------------------------------------------------------------
 
 
-            const Slice& rProtSlice = rSliceSeries.chronological(m_lSliceIndex);
-            m_sNavLocSlice.copyFrom(rProtSlice);
-            VectorPat<double> sPosVect = m_sNavLocSlice.position();
+	//cout << " Number of Navs is " << m_sNav0.getNoOfNavs( )<< endl;			//JK2008: This is correct
+	//cout << " Nav Count " << m_sNav0.getNavCount() << endl;					//JK2008: This is correct
+	for(int iNavNumber = 0; iNavNumber < lNavNumberEnd; iNavNumber++)			//JK2008
+	{																			//JK2008
+		/*
+		//cout << "====in navlooper=== and nav =" << iNavNumber << endl;
+ 		if(iNavNumber == 0 && m_MyControlIB.getScoutOn_ib() == false)			//ib
+ 	    {	
+	 	    #ifdef DEBUG
+	 			m_MyControlIB.CalculateTdead(1080)	;							//ib
+	 			cout << "====calcdeadtime=== and nav =" << iNavNumber << endl;
+	 	    #endif
+ 	        m_sNav0.runPause(m_MyControlIB.getTwait(), false);				//ib - add pause to wait for next period to start for CS
+		    //cout << "extratime===" << m_MyControlIB.getExtraTime() << endl;
+ 		}																		//ib
+		*/
 
-            if (m_bTraceNavFeedback)
-            {
-                TRACE_PUT4(TC_INFO,TF_SEQ,"%s: OLD sPosVect [%8.3f;%8.3f;%8.3f]\n",ptModule,sPosVect.dSag,sPosVect.dCor,sPosVect.dTra);
-            }
+		//  Reset the semaphore for fSEQReceive
+		if (!m_sNav0.semaphoreRelease(&m_sSemaphore))
+		{
+			Trace (rSeqLim, ptModule, "m_sNav0.semaphoreRelease() FAILED");
+			setNLSStatus(m_sNav0.getNLSStatus());
+			return false;
+		}
 
+		//  Play out the navigator
+		if (!m_sNav0.run(rMrProt,rSeqLim,rSeqExpo,pSlcPos))
+		{
+			Trace (rSeqLim, ptModule, "m_sNav0.run() FAILED");
+			setNLSStatus(m_sNav0.getNLSStatus());
+			return false;
+		}
 
-            sPosVect += m_sNavShiftVector;  // Calculation to shift the slice position.
+		// Set a flag to indicate that we are ready to receive the next feedback.
+		if (!m_sNav0.semaphoreAcquire(&m_sSemaphore))
+		{
+			Trace (rSeqLim, ptModule, "m_sNav0.semaphoreAcquire() FAILED");
+			setNLSStatus(m_sNav0.getNLSStatus());
+			return false;
+		}
 
-            if (m_bTraceNavFeedback)
-            {
-                TRACE_PUT4(TC_INFO,TF_SEQ,"%s: NEW sPosVect [%8.3f;%8.3f;%8.3f]\n",ptModule,sPosVect.dSag,sPosVect.dCor,sPosVect.dTra);
-            }
+		//  Before checking for feedback, add some delay time to allow for data transfer, processing, etc.
+		if (!m_sNav0.runPause(1000*m_sNav0.getNavSleepDuration_ms(),true))
+		{
+			Trace (rSeqLim, ptModule, "m_sNav0.runPause() FAILED");
+			setNLSStatus(m_sNav0.getNLSStatus());
+			return false;
+		}
 
-            m_sNavLocSlice.position(sPosVect);
-            if( !pSlcPos[m_lSliceIndex].prep(rMrProt,rSeqLim,m_sNavLocSlice,rSliceSeries.index(rProtSlice)) )
-            {
-                Trace (rSeqLim, ptModule, "pSlcPos[m_lSliceIndex].prep() FAILED");
-                setNLSStatus( pSlcPos[m_lSliceIndex].getNLSStatus() );
-                return false;
-            }
+		//  Wait until the "WAKEUP" code is seen by the DSPs
+		if (!m_sNav0.waitForWakeup())
+		{
+			Trace (rSeqLim, ptModule, "m_sNav0.waitForWakeup() FAILED");
+			setNLSStatus(m_sNav0.getNLSStatus());
+			return false;
+		}
 
-        } //Loop over slices for slice pos modification
+		#ifdef WIN32
+		{
+			//  When the sequence is run in simulation mode, execute fSEQReceive manually, so that the function
+			//  can be tested.
+			SEQData rSEQData;
+			NavigatorFBData sNavigatorFBData;
 
-        // Restore m_lInnerSliceCounter
-        m_lInnerSliceCounter = lInnerSliceCounter;
-#endif
-    }
-    else if (m_eNavDecideCode0 == BreakAndRepeatNavigator)
-    {
-        if (m_bTraceNavFeedback)
-        {
-            TRACE_PUT1(TC_INFO,TF_SEQ,"%s: REPEAT THIS SCAN",ptModule);
-        }
-    }
-    else if (m_eNavDecideCode0 == RopeReorderAndProceed)
-    {
-        if (m_bTraceNavFeedback)
-        {
-            TRACE_PUT1(TC_INFO,TF_SEQ,"%s: ROPE REORDER (not implemented)",ptModule);
-        }
-    }
-    else if (m_eNavDecideCode0 == DoNothing)
-    {
-        if (m_bTraceNavFeedback)
-        {
-            TRACE_PUT1(TC_INFO,TF_SEQ,"%s: DO NOTHING",ptModule);
-        }
-    }
-    else
-    {
-        Trace (rSeqLim, ptModule, "Unrecognized m_eNavDecideCode0");
-        setNLSStatus( SEQU_ERROR );
-        return false;
-    }
+			float fIceResult_1 = 128.;
+			float fIceResult_2 = 125.;
+			if ((m_sNav0.getNavCount()>2)&&(m_sNav0.getNavCount()%5==0)) fIceResult_1 = 32.;
 
+			// if ((m_sNav0.getNavCount()>2)&&(m_sNav0.getNavCount()%5==0)) fIceResult_1 = 32.;	//ibnbnbnbnbn change back
+	        
+	        //#ifdef DEBUG
+	        //fIceResult_1 = m_MyControlIB.XSampleVal_ib();	//sj
+	        //cout<<fIceResult_1 <<endl;
+	        //#endif
+
+			// Prepare the feedback buffer
+			sNavigatorFBData.lNumber = m_sNav0.getNavNumber();
+			sNavigatorFBData.lCount  = m_sNav0.getNavCount();
+			sNavigatorFBData.fResult = fIceResult_1;
+			sNavigatorFBData.fMAGAcceptPos = fIceResult_2;
+
+			rSEQData.setID("NAV");
+
+			// "Deliver" the feedback
+			if( !rSEQData.setData (&sNavigatorFBData, sizeof(sNavigatorFBData)) )
+			{
+				Trace (rSeqLim, ptModule, "rSEQData.setData() FAILED");
+				setNLSStatus( SEQU_ERROR );
+				return false;
+			}
+
+			// "Receive" the feedback
+			NLS_STATUS lStatus = receive(rSeqLim,rSeqExpo,rSEQData);
+			if ( (NLS_SEVERITY(lStatus)!=NLS_SUCCESS) )
+			{
+				Trace (rSeqLim, ptModule, "receive() FAILED");
+				setNLSStatus( lStatus );
+				return false;
+			}
+		}
+		#endif
+
+		//  ---------------------------------------------------------------------------------------------
+		//  Unless this is a preparing scan, wait for the feedback from the ICE program (see fSEQReceive)
+		//  ---------------------------------------------------------------------------------------------
+		if( m_lKernelMode == KERNEL_PREPARE )
+		{
+			if (m_bTraceNavFeedback)
+			{
+				TRACE_PUT1(TC_INFO,TF_SEQ,"%s: Prepare scan - no feedback",ptModule);
+			}
+		}
+		else
+		{
+			if (!m_sNav0.waitForFeedback(&m_sSemaphore,m_sNav0.getNavPollInterval_ms()*1000))
+			{
+				Trace (rSeqLim, ptModule, "m_sNav0.waitForFeedback() FAILED");
+				setNLSStatus(m_sNav0.getNLSStatus());
+				return false;
+			}
+		}
+
+		// ------------------------------------------------------------------------
+		//  Decide here what to do with the navigator feedback -> m_eNavDecideCode0
+		// ------------------------------------------------------------------------
+		if (!m_sNav0.decide(0,m_lKernelMode,rMrProt,rSeqLim,rSeqExpo,pSlcPos))
+		{
+			Trace (rSeqLim, ptModule, "m_sNav0.decide() FAILED");
+			setNLSStatus(SEQU_ERROR);
+			return false;
+		}
+		m_eNavDecideCode0 = m_sNav0.getNavDecideCode();
+
+		if(iNavNumber < (m_sNav0.getNoOfNavs()-1)) m_eNavDecideCode0 = DoNothing;	//JK2008: get nav decide code and act on it for last nav ONLY
+
+		setValidNavShiftVector(false);
+		m_dNavShiftAmountCorrected = 0.0;
+
+		// ycc CHARM 00382011
+		// No repeat scan for this mode during unit test - fix energy and scan time estimation error
+		if ( (rSeqLim.getSeqDebugMode().getDebugMask() & UNITTEST_ON) && (m_sNav0.getNavMode() == Value_NavModeMonitorOnly) )
+		{
+			m_eNavDecideCode0 = DoNothing;
+		}
+
+		//  ----------------------------------------------------
+		//  Perform the slice-shift required for slice-following
+		//  ----------------------------------------------------
+		if (m_eNavDecideCode0 == ShiftSlicePositionAndProceed)
+		{
+			// -----------------------------------------------------------------------------
+			// Calculate the shift vector, which is used later to modify the slice positions
+			// -----------------------------------------------------------------------------
+			double dZ = (double) m_sNav0.getNavShiftAmountCorrected_mm();
+
+			if (m_bTraceNavFeedback)
+			{
+				TRACE_PUT3(TC_INFO,TF_SEQ,"%s: Shift amount  %8.3f (REFPOS: %8.3f)",
+					ptModule,dZ,m_sNav0.getNavReferencePosition_mm());
+			}
+
+			switch (m_sNav0.getNavPulseType())
+			{
+				case Value_NavPulseType2DPencil:
+					m_sNavShiftVector = rMrProt.navigatorArray()[0].normal();
+					break;
+
+				case Value_NavPulseTypeCrossedPair:
+					NavigatorArray& rNavArray = rMrProt.navigatorArray();
+					Navigator       sNav180   = rNavArray[1];
+					sNav180.rotationAngle(0);
+					VectorPat<double> e_phase, e_read;
+					if( !sNav180.orientation(e_phase,e_read) )
+					{
+						Trace (rSeqLim, ptModule, "xxyy() FAILED");
+						setNLSStatus(SEQU_ERROR);
+						return false;
+					}
+					m_sNavShiftVector = e_read;
+					break;
+			}
+			m_dNavShiftAmountCorrected = dZ;
+			m_sNavShiftVector *= dZ;
+			setValidNavShiftVector(true);
+
+			#if defined __A_TRUFI_CV_NAV
+				// For CV_nav, the shift is applied in the SBBTrufiCVKernel instead, and so the following part is skipped.
+			#else
+				//  ---------------------------------------------
+				//  Modify all slice positions in the inner loops
+				//  ---------------------------------------------
+				SliceSeries& rSliceSeries = rMrProt.sliceSeries();
+				long lInnerSliceCounter = m_lInnerSliceCounter;
+				for (m_lInnerSliceCounter = m_lInnerSliceNumber-1; m_lInnerSliceCounter >=0; --m_lInnerSliceCounter )
+				{
+					if (!mapLoopCounterToSliceIndex(rMrProt) )
+					{
+						Trace (rSeqLim, ptModule, "mapLoopCounterToSliceIndex() FAILED");
+						return false;
+					}
+
+					const Slice& rProtSlice = rSliceSeries.chronological(m_lSliceIndex);
+					m_sNavLocSlice.copyFrom(rProtSlice);
+					VectorPat<double> sPosVect = m_sNavLocSlice.position();
+
+					if (m_bTraceNavFeedback)
+					{
+						TRACE_PUT4(TC_INFO,TF_SEQ,"%s: OLD sPosVect [%8.3f;%8.3f;%8.3f]\n",ptModule,sPosVect.dSag,sPosVect.dCor,sPosVect.dTra);
+					}
+
+					sPosVect += m_sNavShiftVector;  // Calculation to shift the slice position.
+
+					if (m_bTraceNavFeedback)
+					{
+						TRACE_PUT4(TC_INFO,TF_SEQ,"%s: NEW sPosVect [%8.3f;%8.3f;%8.3f]\n",ptModule,sPosVect.dSag,sPosVect.dCor,sPosVect.dTra);
+					}
+
+					m_sNavLocSlice.position(sPosVect);
+					if( !pSlcPos[m_lSliceIndex].prep(rMrProt,rSeqLim,m_sNavLocSlice,rSliceSeries.index(rProtSlice)) )
+					{
+						Trace (rSeqLim, ptModule, "pSlcPos[m_lSliceIndex].prep() FAILED");
+						setNLSStatus( pSlcPos[m_lSliceIndex].getNLSStatus() );
+						return false;
+					}
+
+				} //Loop over slices for slice pos modification
+
+				// Restore m_lInnerSliceCounter
+				m_lInnerSliceCounter = lInnerSliceCounter;
+			#endif
+		}
+		else if (m_eNavDecideCode0 == BreakAndRepeatNavigator)
+		{
+			if (m_bTraceNavFeedback)
+			{
+				TRACE_PUT1(TC_INFO,TF_SEQ,"%s: REPEAT THIS SCAN",ptModule);
+			}
+		}
+		else if (m_eNavDecideCode0 == RopeReorderAndProceed)
+		{
+			if (m_bTraceNavFeedback)
+			{
+				TRACE_PUT1(TC_INFO,TF_SEQ,"%s: ROPE REORDER (not implemented)",ptModule);
+			}
+		}
+		else if (m_eNavDecideCode0 == DoNothing)
+		{
+			if (m_bTraceNavFeedback)
+			{
+				TRACE_PUT1(TC_INFO,TF_SEQ,"%s: DO NOTHING",ptModule);
+			}
+		}
+		else
+		{
+			Trace (rSeqLim, ptModule, "Unrecognized m_eNavDecideCode0");
+			setNLSStatus( SEQU_ERROR );
+			return false;
+		}
+
+		if ( iNavNumber < lNavNumberEnd-1 )								//ib
+	    {																	//ib
+			m_sNav0.runPause(m_sNav0.getNavTR_ms()*1000-40000,false);		//ib - add pause to control nav TR
+			//m_sNav0.runPause(10000,false);								//ib - add pause to control nav TR
+		}
+
+	}	//for(int iNavNumber = 0; iNavNumber < lNavNumberEnd; iNavNumber++)
     return true;
 }
 
@@ -1060,6 +1129,19 @@ bool SeqLoopNav::receive(SeqLim&, SeqExpo&, SEQData& rSEQData)
     lNavCount    = pNavigatorFBData->lCount;
     dIceResult_1 = pNavigatorFBData->fResult;
     dIceResult_2 = pNavigatorFBData->fMAGAcceptPos;
+
+	/*
+	//cout << " +++ Navigator valuelalala: " << dIceResult_1 << endl;			//JK2008 
+	
+    //m_MyControlIB.FileSaveAccess( dIceResult_1 );											//ib
+               
+    //cout << "getscouton ==  " << m_MyControlIB.getScoutOn_ib() << "and nav val ==   " << dIceResult_1 << endl;
+    //cout << "getnavfeedback = " << dIceResult_1 << endl;
+    m_MyControlIB.setNavVal_ib( dIceResult_1, m_MyControlIB.getScoutOn_ib() );	//ib
+    
+    //m_pRunLoopNav->m_MyControlIB.PlayOutCS_ib();								//ib
+    //m_MyControlIB.CSIB_recorded( dIceResult_1, false, m_sNav0.getNavTR_ms() );	//ib
+	*/
 
     //  ---------------------------------------------------------------------------------------
     //  For debugging purposes ONLY, we modify the results to test different paths of the logic

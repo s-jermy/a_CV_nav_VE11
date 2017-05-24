@@ -29,6 +29,12 @@
 
 #include "MrServers/MrImaging/Seq/a_CV_nav_VE11/FileSave_sj.h"				//ib-c
 #include "MrServers/MrImaging/Seq/a_CV_nav_VE11/ControlSystem_sj.h"			//ib
+/*
+#ifndef WIN32												//ib
+	#include "MrServers/MrMeasSrv/PMU/pmuSequence.h"		//ib
+    #include "MrServers/MrMeasSrv/PMU/pmumsg.h"				//ib
+#endif
+*/
 
 #include "MrServers/MrMeasSrv/SeqIF/libRT/sREADOUT.h"
 
@@ -57,7 +63,7 @@
 
 #endif
 
-#include "MrServers/MrImaging/libSBB/SBBNavigator.h"
+#include "MrServers/MrImaging/seq/a_CV_nav_VE11/SBBNavigator_sj.h"
 #include "MrServers/MrMeasSrv/SeqIF/libMES/SEQData.h"
 
 typedef NLS_STATUS (*pSEQReceive) (SeqLim&,SeqExpo&,SEQData&);
@@ -153,8 +159,8 @@ public:
     Slice getNavLocSlice();
 
     //  The navigator SBB function
-    SeqBuildBlockNavigator  m_sNav0;
-    SeqBuildBlockNavigator* m_apNav[MAX_NAV_INSTANCES];
+    SeqBuildBlockNavigator_sj  m_sNav0;						//sj
+    SeqBuildBlockNavigator_sj* m_apNav[MAX_NAV_INSTANCES];	//sj
 
     //  Semaphore used to synchronize run and receive.
     SEQSemaphore m_sSemaphore;
@@ -168,6 +174,14 @@ public:
 
     // compute the efficiency of the most recent scans, sets m_dRecentEfficiency
     double computeRecentEfficiency(void);
+
+	/*
+	FileSaveIB m_MyFileIB;				//ib-s
+    ControlSystemIB2 m_MyControlIB;		//ib-c
+	#ifndef WIN32						//ib
+		CPmuSequence m_myPMU;			//ib
+	#endif
+	*/
 
 protected:
 
