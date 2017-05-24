@@ -1,0 +1,127 @@
+##-----------------------------------------------------------------------------
+##  Copyright (C) Siemens AG 1998  All Rights Reserved.  Confidential
+##-----------------------------------------------------------------------------
+##
+## Project: NUMARIS/4
+##    File: \n4_servers1\pkg\MrServers\MrImaging\seq\a_CV_nav\makefile.trs
+## Version: \main\14
+##  Author: Clinical
+##    Date: 2013-08-07 14:47:07 +02:00
+##
+##    Lang: make
+##
+## Descrip: Makefile fuer Sequenz-DLL
+##
+##-----------------------------------------------------------------------------
+
+##-----------------------------------------------------------------------------
+## Naehere Informationen zum den moeglichen Macros im Makefile siehe
+## MedMake-Dokumentation Q:/csw/MedMake/html/contents_t6.html
+##
+
+##-----------------------------------------------------------------------------
+## enter local compiler flags
+##
+## NOTE: New CPPFLAGS should also be added makefile.trs for CV_nav sequence!
+CPPFLAGS (-DSEQUENCE_CLASS_TRUFI_CV_NAV)
+CPPFLAGS (-DSEQUENCE_CLASS)
+CPPFLAGS (-D_CONSOLE)
+CPPFLAGS (-DTRUFI)
+CPPFLAGS (-DBUILD_SEQU)
+CPPFLAGS (-DMRPROT_DEP_OPT)
+CPPFLAGS (-DMULTI_ECHO)
+# Temporily switch off PACE until it is ported #CPPFLAGS (-DSUPPORT_PACE)
+CPPFLAGS (-DSUPPORT_iPAT)
+CPPFLAGS (-DSUPPORT_NAV)
+CPPFLAGS (-D__A_TRUFI_CV_NAV)   
+CPPFLAGS (-DSEQ_NAMESPACE=SEQ_CV_nav)
+
+##-----------------------------------------------------------------------------
+## enter include paths
+##
+
+##-----------------------------------------------------------------------------
+## enter source files
+##
+## NOTE: New source files should also be added makefile.trs for CV_nav sequence!
+CPPSOURCESFROM(a_trufi,             ..  )
+CPPSOURCESFROM(a_trufi_UI,          ..  )
+
+CPPSOURCESFROM(a_trufi_cv,          ..  )
+CPPSOURCESFROM(a_trufi_cv_UI,       ..  )
+
+CPPSOURCESFROM(iPAT,                ../common/iPAT  )
+CPPSOURCESFROM(RFProperties,        ../common/SeqSupport)
+
+CPPSOURCESFROM(LocalSeqLoopCV,      ../a_CV)
+CPPSOURCESFROM(mat3D,               ../a_CV)
+
+CPPSOURCESFROM(LocalSeqLoop,        ../a_trufi      )
+CPPSOURCESFROM(LocalSeqLoopTrufi,   ../a_trufi      )
+
+CPPSOURCESFROM(SBBGREBase,          ../Kernels )
+CPPSOURCESFROM(SBBGREKernel,        ../Kernels )
+CPPSOURCESFROM(SBBDESSKernel,       ../Kernels )
+CPPSOURCESFROM(SBBPhaseEncode,      ../Kernels )
+CPPSOURCESFROM(SBBPSIFKernel,       ../Kernels )
+CPPSOURCESFROM(SBBReadOut,          ../Kernels )
+CPPSOURCESFROM(SBBTRUFIBase,        ../Kernels )
+##CPPSOURCESFROM(SBBTRUFICVKernel,    ../Kernels )
+CPPSOURCESFROM(SBBTRUFIKernel,      ../Kernels )
+
+##-----------------------------------------------------------------------------
+## nav source files
+##
+CPPSOURCES(NavigatorShell_sj)
+CPPSOURCES(NavUI_sj)
+CPPSOURCES(SeqLoopNav_sj)
+CPPSOURCES(SBBNavigator_sj)
+CPPSOURCES(SBBTRUFICVKernel_sj)
+CPPSOURCES(ControlSystem_sj)
+CPPSOURCES(FileSave_sj)
+
+##-----------------------------------------------------------------------------
+## enter local linker flags
+##
+
+##-----------------------------------------------------------------------------
+## enter link libraries
+##  
+MSDEV_i586_WinNT400(LDLIBS (libUILink))
+LDLIBS (MrProt)
+#LDLIBS (Sequence)
+LDLIBS (MeasSections)
+LDLIBS (libSBB)
+LDLIBS (libSeqUtil)
+LDLIBS (libSeqSysProp)
+
+LDLIBS (libGSL)
+LDLIBS (libSeqUT)
+LDLIBS (libUICtrl)
+LDLIBS (MrTrace)
+LDLIBS (MeasNucleiBase)
+LDLIBS (CoilIF)
+LDLIBS (libPACE)
+GCC_AMD_XLinux(LDLIBS(pmu))
+GCC_Linux(LDLIBS(pmu))
+
+LDLIBS (libMES)
+LDLIBS (MrBasicObjects)
+
+LDLIBS (MrProt)
+LDLIBS (MrProtocolData)
+LDLIBS (MrGenericDC)
+LDLIBS (MrTrace)
+LDLIBS (UTrace)
+LDLIBS (MrParc)
+# for GLS
+LDLIBS (MrMath)
+
+##-----------------------------------------------------------------------------
+## enter target name
+##
+LIB (CV_nav_sj)
+
+##-----------------------------------------------------------------------------
+##  Copyright (C) Siemens AG 1998  All Rights Reserved.  Confidential
+##-----------------------------------------------------------------------------
