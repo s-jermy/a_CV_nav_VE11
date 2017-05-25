@@ -192,12 +192,12 @@ void SeqBuildBlockNavigator_sj::setNoOfNavs (long lValue)
 //ib-start
 long SeqBuildBlockNavigator_sj::getNavTR_ms()
 {
-  return m_lNavTR;
+  return m_lNavTR_ms;
 }
 
 void SeqBuildBlockNavigator_sj::setNavTR_ms (long lValue)
 {
-  m_lNavTR = lValue;
+  m_lNavTR_ms = lValue;
 }
 
 long SeqBuildBlockNavigator_sj::getCont1()
@@ -250,12 +250,12 @@ void SeqBuildBlockNavigator_sj::setScoutLength (long lValue)
   m_lScoutLength = lValue;
 }
 
-long SeqBuildBlockNavigator_sj::getSliceSelection();
+long SeqBuildBlockNavigator_sj::getSliceSelection()
 {
-	return m_lSliceSelection
+	return m_lSliceSelection;
 }
 
-void SeqBuildBlockNavigator_sj::setSliceSelection(long lValue);
+void SeqBuildBlockNavigator_sj::setSliceSelection(long lValue)
 {
 	m_lSliceSelection = lValue;
 }

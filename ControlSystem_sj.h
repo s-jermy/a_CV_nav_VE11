@@ -112,7 +112,7 @@ public:
 	//void	DrawSin_ib();				//
 	//void	Start_ib();					//
 	//void	Terminate_ib();				//
-	//void	SliceSelection_ib();		// calculates the slice select matrix
+	void	SliceSelection_ib();		// calculates the slice select matrix
 };
  
 #endif

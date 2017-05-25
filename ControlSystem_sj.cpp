@@ -235,7 +235,7 @@ void ControlSystemIB2::Calculations(long lTa, long lTb, long lTc)
 	cout<<"==============="<<endl;
 }
 
-void ControlSystemIB2::calculateTdead(short Trr)
+void ControlSystemIB2::CalculateTdead(short sTRr)
 {
 	//sTRr = 1000;
 	int SamplesToAdd;
@@ -584,6 +584,7 @@ void ControlSystemIB2::Max_ib(double *dIn)
 	}
 	//DrawSin_ib();			///just to test. remove later
 }
+
 
 // Function: SliceSelection_ib ==========================================
 //

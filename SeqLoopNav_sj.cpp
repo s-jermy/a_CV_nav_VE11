@@ -617,6 +617,7 @@ bool SeqLoopNav::runKernelCallsLoop (pSEQRunKernel pf, MrProt &rMrProt, SeqLim &
 bool SeqLoopNav::runNavBefore (MrProt &rMrProt, SeqLim &rSeqLim, SeqExpo &rSeqExpo, sSLICE_POS* pSlcPos)
 {
     static const char *ptModule  = {"SeqLoopNav::runNavBefore"};
+	long lNavNumberEnd;		//sj
 
     if (!m_sNav0.isPrepared()) return true;
     if (!m_sNav0.getNavExecuteBeforeKernel()) return true;
