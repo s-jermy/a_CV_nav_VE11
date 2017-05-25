@@ -108,13 +108,14 @@ void ControlSystemIB2::InitializeConditions_ib(long lNumOfNavs, long lNavTr, lon
 
 void ControlSystemIB2::CalculateSystemValues_ib()
 {		
-	m_dZestR	= 0.265; 
-	m_dZestI	= 0.25454;
-	m_dZest1	= -2 * m_dZestR;
+	m_dZestR	= 0.265;	//where do these values come from - sj
+	m_dZestI	= 0.25454;	//where do these values come from - sj
+	//m_dZest1	= -2 * m_dZestR;	//this doesn't follow from the math - sj
+	m_dZest1	= 2 * m_dZestR;
 	m_dZest2	= m_dZestI*m_dZestI + m_dZestR*m_dZestR;
 	
 	cout<<"navtr in cs = ======"<<m_dNavTr<<endl;
-	m_dTs 		= m_dNavTr/10000;			//(seconds)		// = 0.01;		// = 0.0001
+	m_dTs 		= m_dNavTr/10000;			//(seconds)		// = 0.01;		// = 0.0001	//why 10000? - sj
 	m_dA 		= 2*m_dKsin * PI/10;		//moet nog n error message vir die ding skryf (waardes moet tussen 2 grense le)
 	
 	//cout<<"-----------a = "<< m_dA <<endl;
@@ -129,8 +130,10 @@ void ControlSystemIB2::CalculateSystemValues_ib()
 	m_dPhi[1][0] 	= m_dTs;
 	m_dPhi[1][1] 	= 1;
 	
-	m_dLp[0][0]	= m_dZest1 + 2;												// = -2 * m_dZestR;		//=   0.7;
-	m_dLp[1][0]	= (1 - m_dZest2 - m_dLp[0][0]) / (m_dA * m_dA * m_dTs); 	// = (m_dLp[0][0] - 0.28)/(m_dA*m_dA*m_dTs);
+	//m_dLp[0][0]	= m_dZest1 + 2;												// = -2 * m_dZestR;		//=   0.7;				//there seems to be an error when factorizing the poles that has cascaded throughout this system - sj
+	//m_dLp[1][0]	= (1 - m_dZest2 - m_dLp[0][0]) / (m_dA * m_dA * m_dTs); 	// = (m_dLp[0][0] - 0.28)/(m_dA*m_dA*m_dTs);	//there seems to be an error when factorizing the poles that has cascaded throughout this system, also no a^2*t^2 - sj
+	m_dLp[0][0]	= 2 - m_dZest1;																//sj
+	m_dLp[1][0]	= (m_dA*m_dA*m_dTs*m_dTs + m_dZest1 - m_dZest2 - 1)/(m_dA * m_dA * m_dTs);	//sj
 	
 	cout <<"lp"<<m_dLp[0][0]<<"and"<<m_dLp[1][0]<<endl;	      
 	cout <<"phi"<<m_dPhi[0][1]<<"and"<<m_dPhi[1][0]<<endl;	
@@ -212,8 +215,8 @@ void ControlSystemIB2::Calculations(long lTa, long lTb, long lTc)
 	m_dTb		= double(lTb);						// where acquisitions ends
 	m_dTc		= double(lTc);						// end of cardiac cycle
 	
-	m_dTprep 		= 60;									//is nie reg nie!!!!!!!!!!!!!!!!
-	m_dTacq  		= m_dTprep + (m_dTb - m_dTa);			// scanning time and pep time together
+	m_dTprep 		= 60;									// is nie reg nie!!!!!!!!!!!!!!!!
+	m_dTacq  		= m_dTprep + (m_dTb - m_dTa);			// scanning time and prep time together
 	m_dNumOfNavs	= double(int((m_dTa - m_dTprep) / m_dNavTr));	// calculate
 	m_dTwait 		= m_dTa - m_dTprep - (m_dNavTr * m_dNumOfNavs); 	
 	//m_dTdead		= double(sTRr) - (m_dTwait + (m_dNavTr * m_dNumOfNavs) + m_dTacq);
